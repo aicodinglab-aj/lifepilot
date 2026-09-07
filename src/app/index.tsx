@@ -1,98 +1,153 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { StyleSheet, Text, View, Pressable, StatusBar } from 'react-native';
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
-
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
-  return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
-}
+const colors = {
+  background: '#0B1110',
+  card: '#14201B',
+  green: '#35D98A',
+  white: '#F5F7F6',
+  muted: '#9BAAA3',
+  border: '#244438',
+};
 
 export default function HomeScreen() {
   return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
 
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
+      <View style={styles.header}>
+        <Text style={styles.title}>
+          Life<Text style={styles.green}>Pilot</Text>
+        </Text>
 
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
+        <Text style={styles.subtitle}>
+          Manage your vehicles and personal expenses in one place.
+        </Text>
 
-        {Platform.OS === 'web' && <WebBadge />}
-      </SafeAreaView>
-    </ThemedView>
+        <View style={styles.accentLine} />
+
+        <Text style={styles.tagline}>
+          DRIVE SMART  •  SPEND WISE  •  LIVE BETTER
+        </Text>
+        
+      </View>
+
+      <View style={styles.cards}>
+        <Pressable style={styles.card}>
+          <View style={styles.iconBox}>
+            <Text style={styles.icon}>🚗</Text>
+          </View>
+
+          <View style={styles.cardContent}>
+            <Text style={styles.cardTitle}>Vehicle Manager</Text>
+            <Text style={styles.cardText}>
+              Vehicles, service, fuel, documents, reminders and reports.
+            </Text>
+          </View>
+
+          <Text style={styles.arrow}>›</Text>
+        </Pressable>
+
+        <Pressable style={styles.card}>
+          <View style={styles.iconBox}>
+            <Text style={styles.icon}>▣</Text>
+          </View>
+
+          <View style={styles.cardContent}>
+            <Text style={styles.cardTitle}>Personal Expense Manager</Text>
+            <Text style={styles.cardText}>
+              Daily expenses, income, budgets, categories and reports.
+            </Text>
+          </View>
+
+          <Text style={styles.arrow}>›</Text>
+        </Pressable>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: colors.background,
+    paddingHorizontal: 24,
     justifyContent: 'center',
-    flexDirection: 'row',
   },
-  safeArea: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
-  },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
+  header: {
+    marginBottom: 44,
   },
   title: {
-    textAlign: 'center',
+    fontSize: 42,
+    fontWeight: '800',
+    color: colors.white,
+    letterSpacing: -1,
   },
-  code: {
-    textTransform: 'uppercase',
+  green: {
+    color: colors.green,
   },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
+  subtitle: {
+    color: colors.muted,
+    fontSize: 16,
+    lineHeight: 25,
+    marginTop: 12,
+  },
+  accentLine: {
+    width: 40,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: colors.green,
+    marginTop: 24,
+    marginBottom: 22,
+  },
+  tagline: {
+    color: colors.muted,
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1.5,
+  },
+  cards: {
+    gap: 16,
+  },
+  card: {
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 22,
+    padding: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: 140,
+  },
+  iconBox: {
+    width: 54,
+    height: 54,
+    borderRadius: 16,
+    backgroundColor: '#193D2C',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  icon: {
+    fontSize: 26,
+    color: colors.green,
+  },
+  cardContent: {
+    flex: 1,
+  },
+  cardTitle: {
+    color: colors.white,
+    fontSize: 17,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  cardText: {
+    color: colors.muted,
+    fontSize: 12,
+    lineHeight: 19,
+  },
+  arrow: {
+    color: colors.green,
+    fontSize: 32,
+    marginLeft: 8,
   },
 });
