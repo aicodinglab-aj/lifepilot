@@ -1,4 +1,6 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, Pressable } from 'react-native';
+import { router } from 'expo-router';
+import { VehiclePhotoImage } from './vehicle-photo-image';
 
 import { lifePilotColors as colors } from '@/constants/lifepilot-theme';
 import type { Vehicle } from '@/features/vehicles/vehicle';
@@ -9,7 +11,8 @@ type VehicleCardProps = {
 
 export function VehicleCard({ vehicle }: VehicleCardProps) {
   return (
-    <View style={styles.card}>
+    <Pressable style={styles.card} accessibilityRole="button" accessibilityLabel={`Open ${vehicle.make} ${vehicle.model}`} onPress={() => router.push({ pathname: '/vehicle/[id]', params: { id: String(vehicle.id) } })}>
+      <VehiclePhotoImage vehicleId={vehicle.id} photoId={vehicle.coverPhotoId} uri={vehicle.coverPhotoUri} style={{ marginBottom: 16 }} />
       <View style={styles.header}>
         <View style={styles.iconBox}>
           <Text style={styles.icon}>🚗</Text>
@@ -27,7 +30,7 @@ export function VehicleCard({ vehicle }: VehicleCardProps) {
         <Detail label="Fuel" value={vehicle.fuelType} />
         <Detail label="Odometer" value={`${vehicle.odometerKm.toLocaleString()} km`} />
       </View>
-    </View>
+    </Pressable>
   );
 }
 

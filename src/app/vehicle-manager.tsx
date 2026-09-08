@@ -4,17 +4,18 @@ import { useSQLiteContext } from 'expo-sqlite';
 import {
   ActivityIndicator,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { VehicleCard } from '@/components/vehicles/vehicle-card';
 import { lifePilotColors as colors } from '@/constants/lifepilot-theme';
 import { getVehicles } from '@/database/vehicles';
+import { retryVehicleCleanup } from '@/features/vehicles/delete-vehicle';
 import type { Vehicle } from '@/features/vehicles/vehicle';
 
 export default function VehicleManagerScreen() {
@@ -22,12 +23,15 @@ export default function VehicleManagerScreen() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [cleanupError, setCleanupError] = useState<string | null>(null);
 
   const loadGarage = useCallback(async () => {
     setIsLoading(true);
     setLoadError(null);
 
     try {
+      try { await retryVehicleCleanup(db); setCleanupError(null); }
+      catch (cause) { setCleanupError(cause instanceof Error ? cause.message : 'Vehicle file cleanup failed. Please retry.'); }
       setVehicles(await getVehicles(db));
     } catch {
       setLoadError('Your garage could not be loaded. Please try again.');
@@ -43,7 +47,7 @@ export default function VehicleManagerScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
       <StatusBar barStyle="light-content" backgroundColor={colors.background} />
 
       <View style={styles.container}>
@@ -53,6 +57,12 @@ export default function VehicleManagerScreen() {
           <Text style={styles.subtitle}>Keep each vehicle and its costs organized in one place.</Text>
         </View>
 
+        {cleanupError && <View style={{ marginBottom: 16, gap: 8 }}>
+          <Text accessibilityRole="alert" style={{ color: '#FF8585' }}>{cleanupError}</Text>
+          <Pressable accessibilityRole="button" disabled={isLoading} onPress={loadGarage} style={styles.retryButton}>
+            <Text style={styles.retryText}>Retry cleanup</Text>
+          </Pressable>
+        </View>}
         {isLoading ? (
           <View style={styles.centerState}>
             <ActivityIndicator color={colors.green} size="large" />

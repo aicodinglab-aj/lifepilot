@@ -14,6 +14,8 @@ type VehicleRow = {
   odometer_km: number;
   created_at: string;
   updated_at: string;
+  cover_photo_id: string | null;
+  cover_photo_uri: string | null;
 };
 
 export class DuplicateRegistrationError extends Error {
@@ -27,7 +29,7 @@ export async function insertVehicle(db: SQLiteDatabase, vehicle: NewVehicle) {
   const timestamp = new Date().toISOString();
 
   try {
-    await db.runAsync(
+    const result = await db.runAsync(
       `INSERT INTO vehicles (
         vehicle_type,
         registration_number,
@@ -53,6 +55,7 @@ export async function insertVehicle(db: SQLiteDatabase, vehicle: NewVehicle) {
         timestamp,
       ],
     );
+    return result.lastInsertRowId;
   } catch (error) {
     if (error instanceof Error && /unique constraint failed/i.test(error.message)) {
       throw new DuplicateRegistrationError();
@@ -62,7 +65,7 @@ export async function insertVehicle(db: SQLiteDatabase, vehicle: NewVehicle) {
   }
 }
 
-export async function getVehicles(db: SQLiteDatabase): Promise<Vehicle[]> {
+export async function getVehicles(db: SQLiteDatabase, vehicleId?: number): Promise<Vehicle[]> {
   const rows = await db.getAllAsync<VehicleRow>(
     `SELECT
       id,
@@ -75,9 +78,13 @@ export async function getVehicles(db: SQLiteDatabase): Promise<Vehicle[]> {
       fuel_type,
       odometer_km,
       created_at,
-      updated_at
+      updated_at,
+      (SELECT id FROM vehicle_photos WHERE vehicle_id = vehicles.id AND is_cover = 1) AS cover_photo_id,
+      (SELECT local_uri FROM vehicle_photos WHERE vehicle_id = vehicles.id AND is_cover = 1) AS cover_photo_uri
     FROM vehicles
+    WHERE (? IS NULL OR id = ?)
     ORDER BY created_at DESC, id DESC`,
+    [vehicleId ?? null, vehicleId ?? null],
   );
 
   return rows.map((row) => ({
@@ -92,5 +99,7 @@ export async function getVehicles(db: SQLiteDatabase): Promise<Vehicle[]> {
     odometerKm: row.odometer_km,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    coverPhotoId: row.cover_photo_id,
+    coverPhotoUri: row.cover_photo_uri,
   }));
 }

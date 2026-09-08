@@ -29,6 +29,8 @@ export type Vehicle = NewVehicle & {
   id: number;
   createdAt: string;
   updatedAt: string;
+  coverPhotoId: string | null;
+  coverPhotoUri: string | null;
 };
 
 export const initialVehicleForm: VehicleForm = {

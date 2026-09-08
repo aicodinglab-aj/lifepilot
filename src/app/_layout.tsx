@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { DarkTheme, Stack, ThemeProvider } from 'expo-router';
+import { DarkTheme, router, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { SQLiteProvider } from 'expo-sqlite';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -45,6 +45,18 @@ export default function RootLayout() {
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="vehicle-manager" options={{ title: 'Vehicle Manager' }} />
           <Stack.Screen name="add-vehicle" options={{ title: 'Add Vehicle' }} />
+          <Stack.Screen name="vehicle/[id]" options={{
+            title: 'Vehicle Photos',
+            headerBackVisible: false,
+            headerLeft: () => (
+              <Pressable accessibilityRole="button" accessibilityLabel="Go back"
+                onPress={() => router.back()}
+                style={({ pressed }) => [styles.photoBackButton, pressed && { opacity: 0.6 }]}>
+                <Text style={styles.photoBackIcon}>{'\u2190'}</Text>
+              </Pressable>
+            ),
+          }} />
+          <Stack.Screen name="vehicle/manage" options={{ title: 'Manage Vehicle' }} />
         </Stack>
       </ThemeProvider>
     </SQLiteProvider>
@@ -52,6 +64,11 @@ export default function RootLayout() {
 }
 
 const styles = StyleSheet.create({
+  photoBackButton: {
+    width: 44, height: 44, marginRight: 8,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  photoBackIcon: { color: lifePilotColors.green, fontSize: 28 },
   errorScreen: {
     flex: 1,
     alignItems: 'center',
