@@ -1,8 +1,10 @@
 import { useCallback, useState } from 'react';
-import { router, useFocusEffect } from 'expo-router';
+import { router, Stack, useFocusEffect } from 'expo-router';
+import { SymbolView } from 'expo-symbols';
 import { useSQLiteContext } from 'expo-sqlite';
 import {
   ActivityIndicator,
+  BackHandler,
   Pressable,
   ScrollView,
   StatusBar,
@@ -17,6 +19,10 @@ import { lifePilotColors as colors } from '@/constants/lifepilot-theme';
 import { getVehicles } from '@/database/vehicles';
 import { retryVehicleCleanup } from '@/features/vehicles/delete-vehicle';
 import type { Vehicle } from '@/features/vehicles/vehicle';
+
+function returnHome() {
+  router.dismissTo('/(tabs)');
+}
 
 export default function VehicleManagerScreen() {
   const db = useSQLiteContext();
@@ -42,12 +48,39 @@ export default function VehicleManagerScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+        returnHome();
+        return true;
+      });
+
+      return () => subscription.remove();
+    }, []),
+  );
+
+  useFocusEffect(
+    useCallback(() => {
       void loadGarage();
     }, [loadGarage]),
   );
 
   return (
     <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
+      <Stack.Screen options={{
+        headerBackVisible: false,
+        headerLeft: () => (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Back to Home"
+            onPress={returnHome}
+            style={({ pressed }) => [styles.backButton, pressed && styles.backButtonPressed]}>
+            <SymbolView
+              name={{ ios: 'arrow.left', android: 'arrow_back', web: 'arrow_back' }}
+              tintColor={colors.green}
+              size={26}
+            />
+          </Pressable>
+        ),
+      }} />
       <StatusBar barStyle="light-content" backgroundColor={colors.background} />
 
       <View style={styles.container}>
@@ -108,6 +141,14 @@ export default function VehicleManagerScreen() {
 }
 
 const styles = StyleSheet.create({
+  backButton: {
+    minWidth: 48,
+    minHeight: 48,
+    marginRight: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backButtonPressed: { opacity: 0.6 },
   safeArea: { flex: 1, backgroundColor: colors.background },
   container: { flex: 1, paddingHorizontal: 24, paddingTop: 24, paddingBottom: 32 },
   heading: { marginBottom: 24 },

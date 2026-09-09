@@ -4,6 +4,13 @@ import { Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { lifePilotColors as colors } from '@/constants/lifepilot-theme';
 
 export default function HomeScreen() {
+  function openVehicleManager() {
+    if (__DEV__) {
+      console.debug('[Home] Vehicle Manager pressed -> /vehicle-manager');
+    }
+    router.push('/vehicle-manager');
+  }
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={colors.background} />
@@ -28,7 +35,7 @@ export default function HomeScreen() {
       <View style={styles.cards}>
         <Pressable
           accessibilityRole="button"
-          onPress={() => router.push('/vehicle-manager')}
+          onPress={openVehicleManager}
           style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}>
           <View style={styles.iconBox}>
             <Text style={styles.icon}>🚗</Text>
@@ -44,7 +51,12 @@ export default function HomeScreen() {
           <Text style={styles.arrow}>›</Text>
         </Pressable>
 
-        <Pressable style={styles.card}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Personal Expense Manager, coming soon"
+          accessibilityState={{ disabled: true }}
+          disabled
+          style={styles.card}>
           <View style={styles.iconBox}>
             <Text style={styles.icon}>▣</Text>
           </View>
@@ -54,9 +66,9 @@ export default function HomeScreen() {
             <Text style={styles.cardText}>
               Daily expenses, income, budgets, categories and reports.
             </Text>
+            <Text style={styles.comingSoon}>Coming soon</Text>
           </View>
 
-          <Text style={styles.arrow}>›</Text>
         </Pressable>
       </View>
     </View>
@@ -117,6 +129,12 @@ const styles = StyleSheet.create({
   },
   cardPressed: {
     opacity: 0.8,
+  },
+  comingSoon: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 8,
   },
   iconBox: {
     width: 54,

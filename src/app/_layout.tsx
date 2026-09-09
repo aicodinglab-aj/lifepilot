@@ -43,6 +43,7 @@ export default function RootLayout() {
             headerShadowVisible: false,
           }}>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="index" options={{ headerShown: false }} />
           <Stack.Screen name="vehicle-manager" options={{ title: 'Vehicle Manager' }} />
           <Stack.Screen name="add-vehicle" options={{ title: 'Add Vehicle' }} />
           <Stack.Screen name="vehicle/[id]" options={{
