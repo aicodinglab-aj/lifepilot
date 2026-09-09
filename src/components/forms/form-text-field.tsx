@@ -4,7 +4,7 @@ import { lifePilotColors as colors } from '@/constants/lifepilot-theme';
 
 type FormTextFieldProps = Pick<
   TextInputProps,
-  'autoCapitalize' | 'keyboardType' | 'maxLength' | 'onChangeText' | 'placeholder' | 'value'
+  'autoCapitalize' | 'keyboardType' | 'maxLength' | 'onChangeText' | 'placeholder' | 'value' | 'multiline' | 'editable'
 > & {
   error?: string;
   label: string;
@@ -19,9 +19,10 @@ export function FormTextField({ error, label, optional, ...inputProps }: FormTex
         {optional && <Text style={styles.optional}> (optional)</Text>}
       </Text>
       <TextInput
+        accessibilityLabel={label}
         {...inputProps}
         placeholderTextColor={colors.muted}
-        style={[styles.input, error && styles.inputError]}
+        style={[styles.input, inputProps.multiline && { minHeight: 120, textAlignVertical: 'top', paddingTop: 14 }, error && styles.inputError]}
       />
       {error && <Text style={styles.error}>{error}</Text>}
     </View>

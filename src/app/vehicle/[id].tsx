@@ -1,115 +1,91 @@
-import { useCallback, useRef, useState } from 'react';
-import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { useSQLiteContext } from 'expo-sqlite';
-import { ActivityIndicator, Alert, FlatList, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { router, type Href } from 'expo-router';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { VehiclePage, vehiclePageStyles as shared } from '@/components/vehicles/vehicle-page';
 import { VehiclePhotoImage } from '@/components/vehicles/vehicle-photo-image';
 import { lifePilotColors as colors } from '@/constants/lifepilot-theme';
-import { getVehiclePhotos } from '@/database/vehicle-photos';
-import { getVehicles } from '@/database/vehicles';
-import { addVehiclePhotos, chooseCover, removeVehiclePhoto } from '@/features/vehicles/photo-service';
-import type { Vehicle } from '@/features/vehicles/vehicle';
-import type { VehiclePhoto } from '@/features/vehicles/vehicle-photo';
+import { useVehicle } from '@/features/vehicles/use-vehicle';
+import { vehicleModules } from '@/features/vehicles/vehicle-modules';
 
-export default function VehicleDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const vehicleId = typeof id === 'string' && /^[1-9]\d*$/.test(id) ? Number(id) : NaN;
-  const db = useSQLiteContext();
-  const [vehicle, setVehicle] = useState<Vehicle | null>(null);
-  const [photos, setPhotos] = useState<VehiclePhoto[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const working = useRef(false);
-  const [viewing, setViewing] = useState<VehiclePhoto | null>(null);
-
-  const load = useCallback(async () => {
-    try {
-      if (!Number.isSafeInteger(vehicleId)) throw new Error('Invalid vehicle link.');
-      const [vehicles, images] = await Promise.all([getVehicles(db, vehicleId), getVehiclePhotos(db, vehicleId)]);
-      setVehicle(vehicles[0] ?? null);
-      setPhotos(images);
-      setError(vehicles.length ? null : 'This vehicle could not be found.');
-    } catch { setError('Could not load this vehicle. Check the link and try again.'); }
-    finally { setLoading(false); }
-  }, [db, vehicleId]);
-  useFocusEffect(useCallback(() => { void load(); }, [load]));
-
-  async function perform(action: () => Promise<void>) {
-    if (working.current) return;
-    working.current = true;
-    setBusy(true);
-    try { await action(); }
-    catch (cause) { Alert.alert('Photo action failed', cause instanceof Error ? cause.message : 'Please try again.'); }
-    finally { await load(); working.current = false; setBusy(false); }
-  }
-
-  function confirmDelete(photo: VehiclePhoto) {
-    Alert.alert('Delete photo?', 'This permanently removes this photo from LifePilot. Your original gallery image is kept.', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => { void perform(() => removeVehiclePhoto(db, vehicleId, photo.id)); } },
-    ]);
-  }
-
-  if (loading) return <View style={styles.center}><ActivityIndicator color={colors.green} /></View>;
-  if (error || !vehicle) return <View style={styles.center}><Text style={styles.text}>{error}</Text><Action label="Try again" onPress={() => { void load(); }} /></View>;
-  const cover = photos.find((photo) => photo.isCover === 1);
-  return <SafeAreaView edges={['bottom']} style={styles.screen}>
-    <Stack.Screen options={{ headerRight: () => (
-      <Pressable accessibilityRole="button" accessibilityLabel="Vehicle settings" disabled={busy}
-        onPress={() => router.push({ pathname: '/vehicle/manage', params: { id: String(vehicleId) } })}
-        style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center', opacity: busy ? 0.5 : 1 }}>
-        <Text style={{ color: colors.green, fontSize: 26 }}>{'\u2699'}</Text>
-      </Pressable>
-    ) }} />
-    <FlatList data={photos} keyExtractor={(photo) => photo.id} numColumns={2}
-      contentContainerStyle={styles.content} columnWrapperStyle={styles.row}
-      ListHeaderComponent={<View style={styles.heading}>
-        <Text style={styles.title}>{vehicle.make} {vehicle.model}</Text>
-        <Text style={styles.accent}>{vehicle.registrationNumber}</Text>
-        <Text style={styles.text}>{vehicle.modelYear} · {vehicle.vehicleType} · {vehicle.fuelType}</Text>
-        <Text style={styles.text}>{vehicle.odometerKm.toLocaleString()} km{vehicle.variant ? ` · ${vehicle.variant}` : ''}</Text>
-        <VehiclePhotoImage vehicleId={vehicleId} photoId={cover?.id ?? null} uri={cover?.localUri ?? null} style={{ height: 230 }} />
-        <Text style={styles.title}>Photos ({photos.length})</Text>
-        <View style={styles.row}>
-          <Action label="Add photos" disabled={busy} onPress={() => { void perform(() => addVehiclePhotos(db, vehicleId, false)); }} />
-          <Action label="Take photo" disabled={busy} onPress={() => { void perform(() => addVehiclePhotos(db, vehicleId, true)); }} />
-        </View>
-        {busy && <ActivityIndicator color={colors.green} accessibilityLabel="Saving photo changes" />}
-      </View>}
-      ListEmptyComponent={<Text style={styles.text}>Add photos from your gallery or take a photo to start.</Text>}
-      renderItem={({ item }) => <View style={styles.tile}>
-        <Pressable accessibilityRole="button" accessibilityLabel="View photo" onPress={() => setViewing(item)}>
-          <VehiclePhotoImage vehicleId={vehicleId} photoId={item.id} uri={item.localUri} style={{ height: 150 }} />
+export default function VehicleOverviewScreen() {
+  const state = useVehicle();
+  const { vehicle, vehicleId } = state;
+  const params = { id: String(vehicleId) };
+  return <VehiclePage title="My Vehicle" {...state} vehicleId={vehicle ? vehicleId : undefined}>
+    {vehicle && <>
+      <View style={styles.hero}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Open vehicle photos"
+          onPress={() => router.push({ pathname: '/vehicle/photos', params })}>
+          <VehiclePhotoImage vehicleId={vehicleId} photoId={vehicle.coverPhotoId} uri={vehicle.coverPhotoUri} style={styles.cover} />
+          <View pointerEvents="none" style={styles.photoBadge}><Text style={styles.photoBadgeText}>View photos ↗</Text></View>
         </Pressable>
-        <Action label={item.isCover ? 'Cover photo' : 'Set as cover'} disabled={busy || !!item.isCover}
-          onPress={() => { void perform(() => chooseCover(db, vehicleId, item.id)); }} />
-        <Action label="Delete" disabled={busy} onPress={() => confirmDelete(item)} />
-      </View>} />
-    <Modal visible={!!viewing} animationType="fade" onRequestClose={() => setViewing(null)}>
-      <SafeAreaView style={styles.viewer}>
-        <Action label="Close photo" onPress={() => setViewing(null)} />
-        {viewing && <VehiclePhotoImage vehicleId={vehicleId} photoId={viewing.id} uri={viewing.localUri} contain style={{ flex: 1 }} />}
-      </SafeAreaView>
-    </Modal>
-  </SafeAreaView>;
+        <View style={styles.identity}>
+          <Text style={shared.eyebrow}>YOUR VEHICLE</Text>
+          <Text style={shared.title}>{vehicle.make} {vehicle.model}</Text>
+          <Text style={styles.registration}>{vehicle.registrationNumber}</Text>
+          <View style={styles.metrics}>
+            <Metric label="MODEL YEAR" value={String(vehicle.modelYear)} />
+            <Metric label="ODOMETER" value={`${vehicle.odometerKm.toLocaleString()} km`} />
+            <Metric label="FUEL TYPE" value={vehicle.fuelType} />
+          </View>
+        </View>
+      </View>
+      <View style={styles.section}>
+        <Text style={shared.sectionTitle}>Quick Status</Text>
+        <View style={styles.statusRow}>
+          <Status label="Next Service" value="No service scheduled" />
+          <Status label="Insurance" value="Not added" />
+          <Status label="PUC / Pollution" value="Not added" />
+        </View>
+      </View>
+      <View style={styles.section}>
+        <Text style={shared.sectionTitle}>Manage your vehicle</Text>
+        <NavigationCard icon="≡" title="Vehicle Details" subtitle="Model, chassis, engine, purchase info"
+          href={{ pathname: '/vehicle/details', params }} />
+        {Object.entries(vehicleModules).map(([module, item]) => <NavigationCard key={module}
+          icon={module === 'service' ? '⌁' : module === 'insurance' ? '◇' : 'ϟ'} {...item}
+          href={{ pathname: '/vehicle/module', params: { ...params, module } }} />)}
+        <NavigationCard icon="▧" title="Documents & Photos" subtitle="Bills, certificates and vehicle photos"
+          href={{ pathname: '/vehicle/photos', params }} />
+      </View>
+    </>}
+  </VehiclePage>;
 }
 
-function Action({ label, onPress, disabled = false }: { label: string; onPress: () => void; disabled?: boolean }) {
-  return <Pressable accessibilityRole="button" accessibilityState={{ disabled }} disabled={disabled} onPress={onPress}
-    style={[styles.button, disabled && { opacity: 0.45 }]}><Text style={styles.accent}>{label}</Text></Pressable>;
+function Metric({ label, value }: { label: string; value: string }) {
+  return <View style={styles.metric}><Text style={styles.metricLabel}>{label}</Text><Text style={styles.metricValue}>{value}</Text></View>;
 }
-
+function Status({ label, value }: { label: string; value: string }) {
+  return <View style={styles.status}><View style={styles.statusMark} /><Text style={styles.statusLabel}>{label}</Text><Text style={styles.statusValue}>{value}</Text></View>;
+}
+function NavigationCard({ icon, title, subtitle, href }: { icon: string; title: string; subtitle: string; href: Href }) {
+  return <Pressable accessibilityRole="button" accessibilityLabel={title} onPress={() => router.push(href)}
+    style={({ pressed }) => [styles.navigationCard, pressed && { opacity: 0.7 }]}>
+    <View style={styles.iconBox}><Text style={styles.icon}>{icon}</Text></View>
+    <View style={styles.navigationText}><Text style={styles.navigationTitle}>{title}</Text><Text style={shared.body}>{subtitle}</Text></View>
+    <Text style={styles.chevron}>›</Text>
+  </Pressable>;
+}
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  center: { flex: 1, backgroundColor: colors.background, padding: 24, alignItems: 'center', justifyContent: 'center', gap: 16 },
-  content: { padding: 20, gap: 14 },
-  heading: { gap: 14, marginBottom: 10 },
-  title: { color: colors.white, fontSize: 25, fontWeight: '800' },
-  text: { color: colors.muted, fontSize: 14, lineHeight: 22 },
-  accent: { color: colors.green, fontWeight: '700' },
-  row: { flexDirection: 'row', gap: 12 },
-  tile: { flex: 1, maxWidth: '50%', gap: 8, padding: 8, borderRadius: 18, backgroundColor: colors.card },
-  button: { minHeight: 44, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
-  viewer: { flex: 1, padding: 16, gap: 16, backgroundColor: colors.background },
+  hero: { borderRadius: 22, overflow: 'hidden', backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 },
+  cover: { height: 220, borderRadius: 0 },
+  photoBadge: { position: 'absolute', bottom: 12, right: 12, paddingVertical: 7, paddingHorizontal: 12, borderRadius: 20, backgroundColor: '#0B1110DD' },
+  photoBadgeText: { color: colors.white, fontSize: 12, fontWeight: '600' },
+  identity: { padding: 20, gap: 8 },
+  registration: { color: colors.green, fontSize: 15, fontWeight: '700', letterSpacing: 0.7 },
+  metrics: { flexDirection: 'row', gap: 12, marginTop: 12, paddingTop: 16, borderTopWidth: 1, borderTopColor: colors.border },
+  metric: { flex: 1, gap: 6 },
+  metricLabel: { color: colors.muted, fontSize: 9, letterSpacing: 0.8, fontWeight: '700' },
+  metricValue: { color: colors.white, fontSize: 14, fontWeight: '700' },
+  section: { gap: 14 },
+  statusRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  status: { flex: 1, minWidth: 90, padding: 13, gap: 9, borderRadius: 16, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.card },
+  statusMark: { width: 18, height: 3, borderRadius: 2, backgroundColor: colors.muted },
+  statusLabel: { color: colors.white, fontSize: 12, fontWeight: '600' },
+  statusValue: { color: colors.muted, fontSize: 12, lineHeight: 18 },
+  navigationCard: { minHeight: 88, flexDirection: 'row', alignItems: 'center', padding: 16, gap: 14, borderRadius: 18, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border },
+  iconBox: { width: 42, height: 44, backgroundColor: '#193D2C', borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  icon: { fontSize: 25, color: colors.green },
+  navigationText: { flex: 1, gap: 4 },
+  navigationTitle: { color: colors.white, fontSize: 16, fontWeight: '700' },
+  chevron: { color: colors.green, fontSize: 26 },
 });

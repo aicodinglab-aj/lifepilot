@@ -44,6 +44,7 @@ const styles = StyleSheet.create({
   label: { color: colors.white, fontSize: 14, fontWeight: '700' },
   options: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   option: {
+    minHeight: 44,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 999,

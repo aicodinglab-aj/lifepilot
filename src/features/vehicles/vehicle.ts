@@ -25,7 +25,20 @@ export type NewVehicle = {
   odometerKm: number;
 };
 
-export type Vehicle = NewVehicle & {
+export type VehicleInformation = {
+  chassisNumber: string | null;
+  engineNumber: string | null;
+  engineCapacity: number | null;
+  transmission: string | null;
+  color: string | null;
+  purchaseDate: string | null;
+  purchasePrice: number | null;
+  dealer: string | null;
+  warrantyValidUntil: string | null;
+  notes: string | null;
+};
+
+export type Vehicle = NewVehicle & VehicleInformation & {
   id: number;
   createdAt: string;
   updatedAt: string;
@@ -65,7 +78,7 @@ export function validateVehicleForm(form: VehicleForm): VehicleFormErrors {
 
   if (!form.odometerKm.trim()) {
     errors.odometerKm = 'Current odometer is required.';
-  } else if (!/^\d+(\.\d+)?$/.test(form.odometerKm) || odometer < 0) {
+  } else if (!/^\d+(\.\d+)?$/.test(form.odometerKm) || !Number.isFinite(odometer) || odometer > Number.MAX_SAFE_INTEGER || odometer < 0) {
     errors.odometerKm = 'Enter a valid non-negative number.';
   }
 

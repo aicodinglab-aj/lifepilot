@@ -1,6 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-const DATABASE_VERSION = 3;
+const DATABASE_VERSION = 4;
 
 export async function migrateDatabase(db: SQLiteDatabase) {
   await db.execAsync('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;');
@@ -70,6 +70,23 @@ export async function migrateDatabase(db: SQLiteDatabase) {
           created_at TEXT NOT NULL
         );
         PRAGMA user_version = 3;
+      `);
+    });
+  }
+  if (currentVersion < 4) {
+    await db.withTransactionAsync(async () => {
+      await db.execAsync(`
+        ALTER TABLE vehicles ADD COLUMN chassis_number TEXT;
+        ALTER TABLE vehicles ADD COLUMN engine_number TEXT;
+        ALTER TABLE vehicles ADD COLUMN engine_capacity REAL CHECK (engine_capacity IS NULL OR engine_capacity > 0);
+        ALTER TABLE vehicles ADD COLUMN transmission TEXT;
+        ALTER TABLE vehicles ADD COLUMN color TEXT;
+        ALTER TABLE vehicles ADD COLUMN purchase_date TEXT;
+        ALTER TABLE vehicles ADD COLUMN purchase_price REAL CHECK (purchase_price IS NULL OR purchase_price >= 0);
+        ALTER TABLE vehicles ADD COLUMN dealer TEXT;
+        ALTER TABLE vehicles ADD COLUMN warranty_valid_until TEXT;
+        ALTER TABLE vehicles ADD COLUMN notes TEXT;
+        PRAGMA user_version = 4;
       `);
     });
   }

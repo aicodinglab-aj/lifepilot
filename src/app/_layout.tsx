@@ -46,7 +46,7 @@ export default function RootLayout() {
           <Stack.Screen name="vehicle-manager" options={{ title: 'Vehicle Manager' }} />
           <Stack.Screen name="add-vehicle" options={{ title: 'Add Vehicle' }} />
           <Stack.Screen name="vehicle/[id]" options={{
-            title: 'Vehicle Photos',
+            title: 'My Vehicle',
             headerBackVisible: false,
             headerLeft: () => (
               <Pressable accessibilityRole="button" accessibilityLabel="Go back"
@@ -57,6 +57,10 @@ export default function RootLayout() {
             ),
           }} />
           <Stack.Screen name="vehicle/manage" options={{ title: 'Manage Vehicle' }} />
+          <Stack.Screen name="vehicle/details" options={{ title: 'Vehicle Details' }} />
+          <Stack.Screen name="vehicle/edit" options={{ title: 'Edit Vehicle Details' }} />
+          <Stack.Screen name="vehicle/photos" options={{ title: 'Documents & Photos' }} />
+          <Stack.Screen name="vehicle/module" options={{ title: 'My Vehicle' }} />
         </Stack>
       </ThemeProvider>
     </SQLiteProvider>

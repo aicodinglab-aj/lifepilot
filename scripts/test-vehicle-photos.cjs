@@ -49,7 +49,7 @@ async function main() {
   await vehicles.insertVehicle(db, { vehicleType: 'Car', registrationNumber: 'TEST', make: 'Test', model: 'One', variant: null, modelYear: 2020, fuelType: 'Petrol', odometerKm: 0 });
   await migration.migrateDatabase(db);
   await migration.migrateDatabase(db);
-  assert.equal(raw.prepare('PRAGMA user_version').get().user_version, 3);
+  assert.equal(raw.prepare('PRAGMA user_version').get().user_version, 4);
   assert.equal((await vehicles.getVehicles(db)).length, 1);
   await vehicles.insertVehicle(db, { vehicleType: 'Car', registrationNumber: 'OTHER', make: 'Test', model: 'Two', variant: null, modelYear: 2020, fuelType: 'Petrol', odometerKm: 0 });
   const photo = (id, vehicleId) => ({ id, vehicleId, localUri: `file:///${id}.jpg`, isCover: 0, createdAt: '2026-09-08' });
@@ -69,8 +69,8 @@ async function main() {
   assert.equal((await vehicles.getVehicles(db, 1))[0].coverPhotoUri, null);
   const fresh = database();
   await migration.migrateDatabase(fresh.db);
-  assert.equal(fresh.raw.prepare('PRAGMA user_version').get().user_version, 3);
-  fresh.raw.exec('PRAGMA user_version = 4');
+  assert.equal(fresh.raw.prepare('PRAGMA user_version').get().user_version, 4);
+  fresh.raw.exec('PRAGMA user_version = 5');
   await assert.rejects(() => migration.migrateDatabase(fresh.db));
 
   class Directory {
