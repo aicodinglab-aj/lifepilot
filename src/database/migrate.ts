@@ -1,6 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-const DATABASE_VERSION = 4;
+const DATABASE_VERSION = 5;
 
 export async function migrateDatabase(db: SQLiteDatabase) {
   await db.execAsync('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;');
@@ -87,6 +87,52 @@ export async function migrateDatabase(db: SQLiteDatabase) {
         ALTER TABLE vehicles ADD COLUMN warranty_valid_until TEXT;
         ALTER TABLE vehicles ADD COLUMN notes TEXT;
         PRAGMA user_version = 4;
+      `);
+    });
+  }
+  if (currentVersion < 5) {
+    await db.withTransactionAsync(async () => {
+      await db.execAsync(`
+        CREATE TABLE vehicle_services (
+          id TEXT PRIMARY KEY NOT NULL,
+          vehicle_id INTEGER NOT NULL REFERENCES vehicles(id) ON DELETE CASCADE,
+          service_date TEXT NOT NULL,
+          odometer REAL NOT NULL CHECK (odometer >= 0),
+          title TEXT NOT NULL CHECK (length(trim(title)) > 0),
+          workshop TEXT,
+          description TEXT,
+          parts_cost REAL CHECK (parts_cost IS NULL OR parts_cost BETWEEN 0 AND 1000000000),
+          labour_cost REAL CHECK (labour_cost IS NULL OR labour_cost BETWEEN 0 AND 1000000000),
+          other_cost REAL CHECK (other_cost IS NULL OR other_cost BETWEEN 0 AND 1000000000),
+          next_service_date TEXT,
+          next_service_odometer REAL CHECK (next_service_odometer IS NULL OR next_service_odometer >= 0),
+          notes TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          UNIQUE (vehicle_id, id)
+        );
+        CREATE INDEX vehicle_services_history ON vehicle_services(vehicle_id, service_date DESC, created_at DESC, id DESC);
+        CREATE TABLE service_bill_photos (
+          id TEXT PRIMARY KEY NOT NULL,
+          vehicle_id INTEGER NOT NULL,
+          service_id TEXT NOT NULL,
+          local_uri TEXT NOT NULL UNIQUE,
+          created_at TEXT NOT NULL,
+          FOREIGN KEY (vehicle_id, service_id) REFERENCES vehicle_services(vehicle_id, id) ON DELETE CASCADE
+        );
+        CREATE INDEX service_bills_owner ON service_bill_photos(vehicle_id, service_id, created_at, id);
+        -- No FK: jobs must survive deletion and interrupted photo imports.
+        CREATE TABLE service_bill_cleanup (
+          vehicle_id INTEGER NOT NULL CHECK (vehicle_id > 0),
+          service_id TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          PRIMARY KEY (vehicle_id, service_id)
+        );
+        CREATE TRIGGER vehicle_service_cleanup AFTER DELETE ON vehicle_services BEGIN
+          INSERT OR IGNORE INTO service_bill_cleanup(vehicle_id, service_id, created_at)
+          VALUES (OLD.vehicle_id, OLD.id, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
+        END;
+        PRAGMA user_version = 5;
       `);
     });
   }

@@ -32,7 +32,7 @@ export default function VehicleOverviewScreen() {
       <View style={styles.section}>
         <Text style={shared.sectionTitle}>Quick Status</Text>
         <View style={styles.statusRow}>
-          <Status label="Next Service" value="No service scheduled" />
+          <Status label="Next Service" value="View Service & Maintenance" />
           <Status label="Insurance" value="Not added" />
           <Status label="PUC / Pollution" value="Not added" />
         </View>
@@ -43,7 +43,7 @@ export default function VehicleOverviewScreen() {
           href={{ pathname: '/vehicle/details', params }} />
         {Object.entries(vehicleModules).map(([module, item]) => <NavigationCard key={module}
           icon={module === 'service' ? '⌁' : module === 'insurance' ? '◇' : 'ϟ'} {...item}
-          href={{ pathname: '/vehicle/module', params: { ...params, module } }} />)}
+          href={module === 'service' ? { pathname: '/vehicle/services', params } : { pathname: '/vehicle/module', params: { ...params, module } }} />)}
         <NavigationCard icon="▧" title="Documents & Photos" subtitle="Bills, certificates and vehicle photos"
           href={{ pathname: '/vehicle/photos', params }} />
       </View>

@@ -1,4 +1,4 @@
-import { useLocalSearchParams } from 'expo-router';
+import { Redirect, useLocalSearchParams } from 'expo-router';
 import { Text, View } from 'react-native';
 import { VehiclePage, vehiclePageStyles as styles } from '@/components/vehicles/vehicle-page';
 import { useVehicle } from '@/features/vehicles/use-vehicle';
@@ -7,6 +7,7 @@ import { vehicleModules } from '@/features/vehicles/vehicle-modules';
 export default function VehicleModuleScreen() {
   const { module } = useLocalSearchParams<{ module: string }>();
   const state = useVehicle();
+  if (module === 'service') return <Redirect href={{ pathname: '/vehicle/services', params: { id: String(state.vehicleId) } }} />;
   const item = module === 'service' || module === 'insurance' || module === 'fuel' ? vehicleModules[module] : null;
   return <VehiclePage title={item?.title ?? 'Vehicle module'} {...state} error={state.error ?? (!item ? 'This module could not be found.' : null)}>
     {item && <View style={styles.card}>
