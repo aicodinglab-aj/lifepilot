@@ -19,6 +19,7 @@ import { lifePilotColors as colors } from '@/constants/lifepilot-theme';
 import { getVehicles } from '@/database/vehicles';
 import { retryVehicleCleanup } from '@/features/vehicles/delete-vehicle';
 import { retryServiceCleanup } from '@/features/vehicles/service-maintenance';
+import { retryCoverageCleanup } from '@/features/vehicles/coverage-service';
 import type { Vehicle } from '@/features/vehicles/vehicle';
 
 function returnHome() {
@@ -37,7 +38,7 @@ export default function VehicleManagerScreen() {
     setLoadError(null);
 
     try {
-      try { await retryVehicleCleanup(db); await retryServiceCleanup(db); setCleanupError(null); }
+      try { await retryVehicleCleanup(db); await retryServiceCleanup(db); await retryCoverageCleanup(db); setCleanupError(null); }
       catch (cause) { setCleanupError(cause instanceof Error ? cause.message : 'Vehicle file cleanup failed. Please retry.'); }
       setVehicles(await getVehicles(db));
     } catch {

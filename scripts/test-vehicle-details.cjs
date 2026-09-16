@@ -61,7 +61,7 @@ async function main() {
   const jobsBefore = raw.prepare('SELECT * FROM vehicle_deletion_cleanup').all();
   const vehiclesBefore = raw.prepare('SELECT * FROM vehicles ORDER BY id').all();
   await migration.migrateDatabase(db); await migration.migrateDatabase(db);
-  assert.equal(raw.prepare('PRAGMA user_version').get().user_version, 5);
+  assert.equal(raw.prepare('PRAGMA user_version').get().user_version, 6);
   for (const row of vehiclesBefore) {
     const after = raw.prepare('SELECT * FROM vehicles WHERE id = ?').get(row.id);
     for (const key of Object.keys(row)) assert.equal(after[key], row[key]);

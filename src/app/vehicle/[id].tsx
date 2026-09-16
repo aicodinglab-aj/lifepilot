@@ -5,10 +5,15 @@ import { VehiclePhotoImage } from '@/components/vehicles/vehicle-photo-image';
 import { lifePilotColors as colors } from '@/constants/lifepilot-theme';
 import { useVehicle } from '@/features/vehicles/use-vehicle';
 import { vehicleModules } from '@/features/vehicles/vehicle-modules';
+import { useCoverageSummary } from '@/features/vehicles/use-coverage';
+import { coverageStatus } from '@/features/vehicles/coverage-status';
 
 export default function VehicleOverviewScreen() {
   const state = useVehicle();
   const { vehicle, vehicleId } = state;
+  const coverage = useCoverageSummary(vehicleId);
+  const status = (kind: 'insurance' | 'puc') => coverage.loading ? 'Loading…' : coverage.error ? 'Could not load' :
+    coverageStatus(coverage.data?.[kind]?.expiryDate, coverage.data?.[kind]?.startDate, coverage.today);
   const params = { id: String(vehicleId) };
   return <VehiclePage title="My Vehicle" {...state} vehicleId={vehicle ? vehicleId : undefined}>
     {vehicle && <>
@@ -33,8 +38,8 @@ export default function VehicleOverviewScreen() {
         <Text style={shared.sectionTitle}>Quick Status</Text>
         <View style={styles.statusRow}>
           <Status label="Next Service" value="View Service & Maintenance" />
-          <Status label="Insurance" value="Not added" />
-          <Status label="PUC / Pollution" value="Not added" />
+          <Status label="Insurance" value={status('insurance')} />
+          <Status label="PUC / Pollution" value={status('puc')} />
         </View>
       </View>
       <View style={styles.section}>
@@ -43,7 +48,7 @@ export default function VehicleOverviewScreen() {
           href={{ pathname: '/vehicle/details', params }} />
         {Object.entries(vehicleModules).map(([module, item]) => <NavigationCard key={module}
           icon={module === 'service' ? '⌁' : module === 'insurance' ? '◇' : 'ϟ'} {...item}
-          href={module === 'service' ? { pathname: '/vehicle/services', params } : { pathname: '/vehicle/module', params: { ...params, module } }} />)}
+          href={module === 'service' ? { pathname: '/vehicle/services', params } : module === 'insurance' ? { pathname: '/vehicle/insurance-puc', params } : { pathname: '/vehicle/module', params: { ...params, module } }} />)}
         <NavigationCard icon="▧" title="Documents & Photos" subtitle="Bills, certificates and vehicle photos"
           href={{ pathname: '/vehicle/photos', params }} />
       </View>

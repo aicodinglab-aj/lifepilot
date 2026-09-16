@@ -1,6 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-const DATABASE_VERSION = 5;
+const DATABASE_VERSION = 6;
 
 export async function migrateDatabase(db: SQLiteDatabase) {
   await db.execAsync('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;');
@@ -133,6 +133,83 @@ export async function migrateDatabase(db: SQLiteDatabase) {
           VALUES (OLD.vehicle_id, OLD.id, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
         END;
         PRAGMA user_version = 5;
+      `);
+    });
+  }
+  if (currentVersion < 6) {
+    await db.withTransactionAsync(async () => {
+      await db.execAsync(`
+        CREATE TABLE vehicle_insurance (
+          id TEXT PRIMARY KEY NOT NULL,
+          vehicle_id INTEGER NOT NULL REFERENCES vehicles(id) ON DELETE CASCADE,
+          provider TEXT NOT NULL CHECK (length(trim(provider)) > 0),
+          policy_number TEXT NOT NULL CHECK (length(trim(policy_number)) > 0),
+          policy_type TEXT,
+          start_date TEXT,
+          expiry_date TEXT NOT NULL,
+          premium_amount REAL CHECK (premium_amount IS NULL OR premium_amount BETWEEN 0 AND 1000000000),
+          notes TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          revision INTEGER NOT NULL DEFAULT 1,
+          CHECK (start_date IS NULL OR expiry_date >= start_date),
+          UNIQUE (vehicle_id, id)
+        );
+        CREATE TABLE vehicle_puc (
+          id TEXT PRIMARY KEY NOT NULL,
+          vehicle_id INTEGER NOT NULL REFERENCES vehicles(id) ON DELETE CASCADE,
+          certificate_number TEXT,
+          issue_date TEXT,
+          expiry_date TEXT NOT NULL,
+          testing_center TEXT,
+          amount REAL CHECK (amount IS NULL OR amount BETWEEN 0 AND 1000000000),
+          notes TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          revision INTEGER NOT NULL DEFAULT 1,
+          CHECK (issue_date IS NULL OR expiry_date >= issue_date),
+          UNIQUE (vehicle_id, id)
+        );
+        -- No FK: cleanup survives a removed document, record or vehicle.
+        CREATE TABLE coverage_document_cleanup (
+          kind TEXT NOT NULL CHECK (kind IN ('insurance', 'puc')),
+          vehicle_id INTEGER NOT NULL CHECK (vehicle_id > 0),
+          record_id TEXT NOT NULL,
+          document_id TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          PRIMARY KEY (kind, vehicle_id, record_id, document_id)
+        );
+        CREATE INDEX insurance_history ON vehicle_insurance(vehicle_id, expiry_date DESC, created_at DESC, id DESC);
+        CREATE INDEX insurance_expiry ON vehicle_insurance(expiry_date, vehicle_id);
+        CREATE TABLE insurance_documents (
+          id TEXT PRIMARY KEY NOT NULL,
+          vehicle_id INTEGER NOT NULL,
+          record_id TEXT NOT NULL,
+          local_uri TEXT NOT NULL UNIQUE,
+          created_at TEXT NOT NULL,
+          FOREIGN KEY (vehicle_id, record_id) REFERENCES vehicle_insurance(vehicle_id, id) ON DELETE CASCADE
+        );
+        CREATE INDEX insurance_documents_owner ON insurance_documents(vehicle_id, record_id, created_at, id);
+        CREATE TRIGGER insurance_document_cleanup AFTER DELETE ON insurance_documents BEGIN
+          INSERT OR IGNORE INTO coverage_document_cleanup(kind, vehicle_id, record_id, document_id, created_at)
+          VALUES ('insurance', OLD.vehicle_id, OLD.record_id, OLD.id, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
+        END;
+        CREATE INDEX puc_history ON vehicle_puc(vehicle_id, expiry_date DESC, created_at DESC, id DESC);
+        CREATE INDEX puc_expiry ON vehicle_puc(expiry_date, vehicle_id);
+        CREATE TABLE puc_documents (
+          id TEXT PRIMARY KEY NOT NULL,
+          vehicle_id INTEGER NOT NULL,
+          record_id TEXT NOT NULL,
+          local_uri TEXT NOT NULL UNIQUE,
+          created_at TEXT NOT NULL,
+          FOREIGN KEY (vehicle_id, record_id) REFERENCES vehicle_puc(vehicle_id, id) ON DELETE CASCADE
+        );
+        CREATE INDEX puc_documents_owner ON puc_documents(vehicle_id, record_id, created_at, id);
+        CREATE TRIGGER puc_document_cleanup AFTER DELETE ON puc_documents BEGIN
+          INSERT OR IGNORE INTO coverage_document_cleanup(kind, vehicle_id, record_id, document_id, created_at)
+          VALUES ('puc', OLD.vehicle_id, OLD.record_id, OLD.id, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
+        END;
+        PRAGMA user_version = 6;
       `);
     });
   }
