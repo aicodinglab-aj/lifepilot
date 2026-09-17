@@ -1,3 +1,4 @@
+import { useThemedStyles } from '@/features/appearance/appearance-provider';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
@@ -20,6 +21,7 @@ export default function CoverageEditScreen() {
 }
 
 function CoverageEditor({ routeKind, recordId }: { routeKind: string; recordId?: string }) {
+  const themed_styles = useThemedStyles(styles);
   const state = useVehicle();
   const db = useSQLiteContext();
   const [form, setForm] = useState({ ...emptyCoverageForm });
@@ -85,9 +87,9 @@ function CoverageEditor({ routeKind, recordId }: { routeKind: string; recordId?:
     loading={loading || state.loading} error={error || state.error} reload={() => { setLoading(true); state.reload(); setRetry((n) => n + 1); }} />;
   const kind = parseCoverageKind(routeKind);
   return <VehiclePage title={`${record ? 'Edit' : 'Add'} ${title}`}>
-    <Text style={styles.eyebrow}>{state.vehicle?.registrationNumber}</Text>
-    <Text style={styles.title}>{record ? 'Edit' : 'Add'} {title}</Text>
-    {coverageFields(kind).map((field) => <View key={field.key} style={styles.section}>
+    <Text style={themed_styles.eyebrow}>{state.vehicle?.registrationNumber}</Text>
+    <Text style={themed_styles.title}>{record ? 'Edit' : 'Add'} {title}</Text>
+    {coverageFields(kind).map((field) => <View key={field.key} style={themed_styles.section}>
       {field.key === 'policyType' && <View pointerEvents={busy ? 'none' : 'auto'}>
         <OptionSelector label="Common policy types" options={policyTypes} value={form.policyType}
           onChange={(value) => { if (!busy) setForm((current) => ({ ...current, policyType: value })); }} />
@@ -97,21 +99,21 @@ function CoverageEditor({ routeKind, recordId }: { routeKind: string; recordId?:
         placeholder={field.date ? 'YYYY-MM-DD' : field.key === 'policyType' ? 'Choose above or enter another type' : undefined}
         keyboardType={field.numeric ? 'decimal-pad' : 'default'} multiline={field.multiline} editable={!busy} error={errors[field.key]} />
     </View>)}
-    <Text style={styles.sectionTitle}>{kind === 'insurance' ? 'Policy Document Photos' : 'PUC Certificate Photos'}</Text>
-    <Text style={styles.body}>Attach photos of your documents. Attachment changes apply when you save.</Text>
+    <Text style={themed_styles.sectionTitle}>{kind === 'insurance' ? 'Policy Document Photos' : 'PUC Certificate Photos'}</Text>
+    <Text style={themed_styles.body}>Attach photos of your documents. Attachment changes apply when you save.</Text>
     <CoverageAction label="Select from gallery" disabled={busy} onPress={() => { void pick(false); }} />
     <CoverageAction label="Take photo" disabled={busy} onPress={() => { void pick(true); }} />
     {documents.map((doc, index) => {
       const uri = availableCoverageDocumentUri(kind, doc), marked = removed.includes(doc.id);
-      return <View key={doc.id} style={styles.card}>
-        <Text style={styles.body}>Saved document {index + 1}{marked ? ' · Will be removed on save' : ''}</Text>
+      return <View key={doc.id} style={themed_styles.card}>
+        <Text style={themed_styles.body}>Saved document {index + 1}{marked ? ' · Will be removed on save' : ''}</Text>
         {!marked && <Pressable accessibilityRole="button" accessibilityLabel={`Preview saved document ${index + 1}`} disabled={!uri} onPress={() => setViewing(uri)}>
           <CoverageDocumentImage uri={uri} /></Pressable>}
         <CoverageAction label={marked ? 'Keep document' : 'Remove document on save'} disabled={busy}
           onPress={() => setRemoved((current) => marked ? current.filter((id) => id !== doc.id) : [...current, doc.id])} />
       </View>;
     })}
-    {photos.map((photo, index) => <View key={photo.id} style={styles.card}>
+    {photos.map((photo, index) => <View key={photo.id} style={themed_styles.card}>
       <Pressable accessibilityRole="button" accessibilityLabel={`Preview new document ${index + 1}`} onPress={() => setViewing(photo.uri)}>
         <CoverageDocumentImage uri={photo.uri} /></Pressable>
       <CoverageAction label={`Remove selected photo ${index + 1}`} disabled={busy} onPress={() => setPhotos((current) => current.filter((item) => item.id !== photo.id))} />

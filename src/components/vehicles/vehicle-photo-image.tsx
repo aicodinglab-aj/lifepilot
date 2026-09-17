@@ -1,3 +1,4 @@
+import { useThemedStyles } from '@/features/appearance/appearance-provider';
 import { useState } from 'react';
 import { Image, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import { lifePilotColors as colors } from '@/constants/lifepilot-theme';
@@ -7,9 +8,10 @@ export function VehiclePhotoImage({ vehicleId, photoId, uri, style, contain = fa
   vehicleId: number; photoId: string | null; uri: string | null;
   style?: StyleProp<ViewStyle>; contain?: boolean;
 }) {
+  const themed_styles = useThemedStyles(styles);
   const [failedUri, setFailedUri] = useState<string | null>(null);
   const resolved = photoId && uri ? availablePhotoUri(vehicleId, photoId, uri) : null;
-  return <View style={[styles.frame, style]}>
+  return <View style={[themed_styles.frame, style]}>
     {resolved && failedUri !== resolved
       ? <Image accessibilityLabel="Vehicle photo" source={{ uri: resolved }} style={StyleSheet.absoluteFill}
           resizeMode={contain ? 'contain' : 'cover'} onError={(event) => {
@@ -18,7 +20,7 @@ export function VehiclePhotoImage({ vehicleId, photoId, uri, style, contain = fa
             });
             setFailedUri(resolved);
           }} />
-      : <Text style={styles.placeholder}>{uri ? 'Photo unavailable' : 'No vehicle photo yet'}</Text>}
+      : <Text style={themed_styles.placeholder}>{uri ? 'Photo unavailable' : 'No vehicle photo yet'}</Text>}
   </View>;
 }
 

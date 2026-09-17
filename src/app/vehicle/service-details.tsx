@@ -1,3 +1,4 @@
+import { useThemedStyles } from '@/features/appearance/appearance-provider';
 import { useCallback, useRef, useState } from 'react';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
@@ -11,6 +12,7 @@ import { parseVehicleId } from '@/features/vehicles/vehicle-details';
 import { availableServiceBillUri, validateServiceOwner } from '@/storage/service-bills';
 
 export default function ServiceDetailsScreen() {
+  const themed_styles = useThemedStyles(styles);
   const params = useLocalSearchParams<{ id: string; serviceId: string }>();
   const vehicleId = parseVehicleId(params.id);
   const serviceId = typeof params.serviceId === 'string' ? params.serviceId : '';
@@ -57,15 +59,15 @@ export default function ServiceDetailsScreen() {
   }
   return <VehiclePage title="Service Details" loading={loading} error={error} reload={() => setRetry((n) => n + 1)}>
     {record && <>
-      <Text style={styles.title}>{record.title}</Text>
-      <View style={styles.card}>{serviceFields.map((field) => {
+      <Text style={themed_styles.title}>{record.title}</Text>
+      <View style={themed_styles.card}>{serviceFields.map((field) => {
         const value = record[field.key];
         const formatted = field.key.endsWith('Cost') ? serviceMoney(typeof value === 'number' ? value : null)
           : value == null ? 'Not added' : field.key === 'odometer' || field.key === 'nextServiceOdometer' ? `${Number(value).toLocaleString()} km` : String(value);
-        return <View key={field.key} style={styles.section}><Text style={styles.body}>{field.label}</Text><Text selectable style={styles.accent}>{formatted}</Text></View>;
-      })}<Text style={styles.body}>Total Cost</Text><Text style={styles.sectionTitle}>{serviceMoney(record.totalCost)}</Text></View>
-      <Text style={styles.sectionTitle}>Bill / Receipt Photos</Text>
-      {!bills.length && <Text style={styles.body}>Not added</Text>}
+        return <View key={field.key} style={themed_styles.section}><Text style={themed_styles.body}>{field.label}</Text><Text selectable style={themed_styles.accent}>{formatted}</Text></View>;
+      })}<Text style={themed_styles.body}>Total Cost</Text><Text style={themed_styles.sectionTitle}>{serviceMoney(record.totalCost)}</Text></View>
+      <Text style={themed_styles.sectionTitle}>Bill / Receipt Photos</Text>
+      {!bills.length && <Text style={themed_styles.body}>Not added</Text>}
       {bills.map((bill, index) => {
         const uri = availableServiceBillUri(vehicleId, serviceId, bill.id, bill.localUri);
         return <Pressable key={bill.id} accessibilityRole="button" accessibilityLabel={`View bill ${index + 1}`}

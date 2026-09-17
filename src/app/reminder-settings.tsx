@@ -1,3 +1,4 @@
+import { useThemedStyles } from '@/features/appearance/appearance-provider';
 import { useCallback, useRef, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
@@ -13,6 +14,7 @@ import { scheduleDebugReminder } from '@/features/reminders/notifications';
 import { reminderTestEnabled } from '@/features/reminders/test-build';
 
 export default function ReminderSettingsScreen() {
+  const themed_styles = useThemedStyles(styles);
   const db = useSQLiteContext(), runtime = useReminderRuntime();
   const [intervals, setIntervals] = useState<ReminderInterval[]>([]), [preferences, setPreferences] = useState<ReminderPreferences | null>(null);
   const [threshold, setThreshold] = useState('500'), [loading, setLoading] = useState(true), [busy, setBusy] = useState(false);
@@ -51,20 +53,20 @@ export default function ReminderSettingsScreen() {
   }
   return <VehiclePage title="Reminder Settings" loading={loading} error={error} reload={() => setRetry((n) => n + 1)}>
     {preferences && <>
-      <Text style={styles.title}>Reminder Settings</Text>
-      <Text style={styles.body}>Defaults apply to all vehicles and existing records. Date reminders target 9:00 a.m. local time; device power settings may delay delivery.</Text>
+      <Text style={themed_styles.title}>Reminder Settings</Text>
+      <Text style={themed_styles.body}>Defaults apply to all vehicles and existing records. Date reminders target 9:00 a.m. local time; device power settings may delay delivery.</Text>
       <ReminderNotificationStatus />
-      <View style={styles.card}><Text style={styles.sectionTitle}>Schedule local notifications</Text>
+      <View style={themed_styles.card}><Text style={themed_styles.sectionTitle}>Schedule local notifications</Text>
         <Switch accessibilityLabel="Schedule local notifications" disabled={busy} value={!!preferences.notificationsEnabled} onValueChange={(enabled) => { void perform(async () => {
           await setReminderPreferences(db, enabled, preferences.mileageThreshold);
           setPreferences({ ...preferences, notificationsEnabled: enabled ? 1 : 0 });
         }); }} />
-        <Text style={styles.body}>Turning this off keeps in-app reminders and cancels pending vehicle notifications.</Text>
+        <Text style={themed_styles.body}>Turning this off keeps in-app reminders and cancels pending vehicle notifications.</Text>
       </View>
-      {(['insurance', 'puc', 'service'] as const).map((type) => <View key={type} style={styles.card}>
-        <Text style={styles.sectionTitle}>{reminderTitle(type)} reminders</Text>
+      {(['insurance', 'puc', 'service'] as const).map((type) => <View key={type} style={themed_styles.card}>
+        <Text style={themed_styles.sectionTitle}>{reminderTitle(type)} reminders</Text>
         {intervals.filter((item) => item.sourceType === type).map((item) => <View key={item.offsetDays} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-          <Text style={styles.body}>{intervalLabel(item.offsetDays)}</Text>
+          <Text style={themed_styles.body}>{intervalLabel(item.offsetDays)}</Text>
           <Switch accessibilityLabel={`${reminderTitle(type)}: ${intervalLabel(item.offsetDays)}`} disabled={busy} value={!!item.enabled}
             onValueChange={(enabled) => { void perform(async () => {
               await setReminderInterval(db, type, item.offsetDays, enabled);
@@ -72,18 +74,18 @@ export default function ReminderSettingsScreen() {
             }); }} />
         </View>)}
       </View>)}
-      <View style={styles.card}><Text style={styles.sectionTitle}>Service mileage warning</Text>
+      <View style={themed_styles.card}><Text style={themed_styles.sectionTitle}>Service mileage warning</Text>
         <FormTextField label="Warn this many km before service" value={threshold} onChangeText={setThreshold} keyboardType="decimal-pad" editable={!busy} />
-        <Text style={styles.body}>Uses your entered odometer. Mileage alone never schedules a calendar notification.</Text>
+        <Text style={themed_styles.body}>Uses your entered odometer. Mileage alone never schedules a calendar notification.</Text>
         <CoverageAction label="Save mileage threshold" disabled={busy} onPress={() => { void perform(async () => {
           if (!/^\d+(\.\d+)?$/.test(threshold.trim())) throw new Error('Enter a non-negative number of kilometres.');
           await setReminderPreferences(db, !!preferences.notificationsEnabled, Number(threshold));
           setPreferences({ ...preferences, mileageThreshold: Number(threshold) });
         }); }} />
       </View>
-      {reminderTestEnabled && <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Notification testing</Text>
-        <Text style={styles.body}>Preview/development only. Sends one local test even if regular scheduling is off. No vehicle records or reminder intervals are changed. Enable notification permission above first.</Text>
+      {reminderTestEnabled && <View style={themed_styles.card}>
+        <Text style={themed_styles.sectionTitle}>Notification testing</Text>
+        <Text style={themed_styles.body}>Preview/development only. Sends one local test even if regular scheduling is off. No vehicle records or reminder intervals are changed. Enable notification permission above first.</Text>
         <CoverageAction label="Test notification in 10 seconds" disabled={busy} onPress={() => { void testNotification(); }} />
       </View>}
     </>}

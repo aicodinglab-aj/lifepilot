@@ -1,11 +1,12 @@
+import { useAppearance } from '@/features/appearance/appearance-provider';
 import { Slot } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { lifePilotColors } from '@/constants/lifepilot-theme';
 
 export default function HomeLayout() {
+  const appearance = useAppearance();
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: lifePilotColors.background }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: appearance.colors.background }}>
       <Slot />
     </SafeAreaView>
   );

@@ -1,3 +1,4 @@
+import { useThemedStyles } from '@/features/appearance/appearance-provider';
 import { useState } from 'react';
 import { Image } from 'expo-image';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -6,18 +7,21 @@ import { lifePilotColors as colors } from '@/constants/lifepilot-theme';
 import { vehiclePageStyles } from './vehicle-page';
 
 export function ServiceAction({ label, onPress, disabled = false }: { label: string; onPress: () => void; disabled?: boolean }) {
+  const themed_serviceStyles = useThemedStyles(serviceStyles);
   return <Pressable accessibilityRole="button" accessibilityState={{ disabled }} disabled={disabled} onPress={onPress}
-    style={[serviceStyles.button, disabled && { opacity: 0.45 }]}><Text style={serviceStyles.accent}>{label}</Text></Pressable>;
+    style={[themed_serviceStyles.button, disabled && { opacity: 0.45 }]}><Text style={themed_serviceStyles.accent}>{label}</Text></Pressable>;
 }
 export function BillImage({ uri, full = false }: { uri: string | null; full?: boolean }) {
+  const themed_serviceStyles = useThemedStyles(serviceStyles);
   const [failed, setFailed] = useState(false);
-  return uri && !failed ? <Image source={{ uri }} contentFit="contain" style={full ? { flex: 1 } : serviceStyles.thumbnail}
+  return uri && !failed ? <Image source={{ uri }} contentFit="contain" style={full ? { flex: 1 } : themed_serviceStyles.thumbnail}
     accessibilityLabel="Service bill" onError={() => setFailed(true)} />
-    : <View style={serviceStyles.card}><Text style={serviceStyles.body}>Bill image unavailable</Text></View>;
+    : <View style={themed_serviceStyles.card}><Text style={themed_serviceStyles.body}>Bill image unavailable</Text></View>;
 }
 export function BillViewer({ uri, close }: { uri: string | null; close: () => void }) {
+  const themed_serviceStyles = useThemedStyles(serviceStyles);
   return <Modal visible={uri != null} onRequestClose={close} animationType="fade">
-    <SafeAreaView style={serviceStyles.viewer}>
+    <SafeAreaView style={themed_serviceStyles.viewer}>
       <ServiceAction label="Close bill" onPress={close} />
       {uri && <BillImage key={uri} uri={uri} full />}
     </SafeAreaView>

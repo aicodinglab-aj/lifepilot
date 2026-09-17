@@ -1,3 +1,4 @@
+import { useThemedStyles, useAppearance } from '@/features/appearance/appearance-provider';
 import { useCallback, useRef, useState } from 'react';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
@@ -13,6 +14,8 @@ import { useCoverageToday } from '@/features/vehicles/use-coverage';
 import { useVehicle } from '@/features/vehicles/use-vehicle';
 
 export default function CoverageHistoryScreen() {
+  const themed_styles = useThemedStyles(styles);
+  const appearance = useAppearance();
   const { kind: routeKind } = useLocalSearchParams<{ kind: string }>();
   const state = useVehicle();
   const db = useSQLiteContext();
@@ -50,20 +53,20 @@ export default function CoverageHistoryScreen() {
   const kind = parseCoverageKind(routeKind);
   const params = { id: String(state.vehicleId), kind };
   const add = () => router.push({ pathname: '/vehicle/coverage-edit', params });
-  return <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.screen}>
+  return <SafeAreaView edges={['left', 'right', 'bottom']} style={themed_styles.screen}>
     <VehicleHeader title={`${title} History`} action={{ label: `Add ${title}`, onPress: add }} />
-    <FlatList data={records} keyExtractor={(record) => record.id} contentContainerStyle={styles.content}
+    <FlatList data={records} keyExtractor={(record) => record.id} contentContainerStyle={themed_styles.content}
       onEndReached={() => { if (!pageError) void loadMore(); }} onEndReachedThreshold={0.4}
-      ListHeaderComponent={<View style={styles.section}><Text style={styles.eyebrow}>{state.vehicle?.registrationNumber}</Text>
-        <Text style={styles.title}>{title} History</Text><Text style={styles.body}>Latest expiry first. Previous records stay here when you add a renewal.</Text></View>}
-      ListEmptyComponent={<View style={styles.card}><Text style={styles.sectionTitle}>No {title} records yet</Text>
+      ListHeaderComponent={<View style={themed_styles.section}><Text style={themed_styles.eyebrow}>{state.vehicle?.registrationNumber}</Text>
+        <Text style={themed_styles.title}>{title} History</Text><Text style={themed_styles.body}>Latest expiry first. Previous records stay here when you add a renewal.</Text></View>}
+      ListEmptyComponent={<View style={themed_styles.card}><Text style={themed_styles.sectionTitle}>No {title} records yet</Text>
         <CoverageAction label={`Add ${title}`} onPress={add} /></View>}
-      ListFooterComponent={paging ? <ActivityIndicator color={colors.green} /> : pageError ? <View style={styles.section}>
-        <Text style={styles.body}>{pageError}</Text><CoverageAction label="Try again" onPress={() => { void loadMore(); }} /></View> : null}
+      ListFooterComponent={paging ? <ActivityIndicator color={appearance.colors.green} /> : pageError ? <View style={themed_styles.section}>
+        <Text style={themed_styles.body}>{pageError}</Text><CoverageAction label="Try again" onPress={() => { void loadMore(); }} /></View> : null}
       renderItem={({ item }) => <Pressable accessibilityRole="button" accessibilityLabel={`View ${coverageTitle(kind)} ${item.number ?? item.expiryDate}`}
-        style={styles.card} onPress={() => router.push({ pathname: '/vehicle/coverage-details', params: { ...params, recordId: item.id } })}>
-        <Text style={styles.sectionTitle}>{item.provider ?? title}</Text><Text style={styles.body}>{item.number ?? 'Not added'}</Text>
-        <CoverageStatusBadge record={item} today={today} /><Text style={styles.accent}>{serviceMoney(item.amount)}</Text>
+        style={themed_styles.card} onPress={() => router.push({ pathname: '/vehicle/coverage-details', params: { ...params, recordId: item.id } })}>
+        <Text style={themed_styles.sectionTitle}>{item.provider ?? title}</Text><Text style={themed_styles.body}>{item.number ?? 'Not added'}</Text>
+        <CoverageStatusBadge record={item} today={today} /><Text style={themed_styles.accent}>{serviceMoney(item.amount)}</Text>
       </Pressable>} />
   </SafeAreaView>;
 }

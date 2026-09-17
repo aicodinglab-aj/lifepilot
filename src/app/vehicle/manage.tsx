@@ -1,3 +1,4 @@
+import { useThemedStyles, useAppearance } from '@/features/appearance/appearance-provider';
 import { useCallback, useRef, useState } from 'react';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
@@ -9,6 +10,8 @@ import { deleteVehicle } from '@/features/vehicles/delete-vehicle';
 import type { Vehicle } from '@/features/vehicles/vehicle';
 
 export default function ManageVehicleScreen() {
+  const themed_styles = useThemedStyles(styles);
+  const appearance = useAppearance();
   const { id } = useLocalSearchParams<{ id: string }>();
   const vehicleId = typeof id === 'string' && /^[1-9]\d*$/.test(id) ? Number(id) : NaN;
   const db = useSQLiteContext();
@@ -54,23 +57,23 @@ export default function ManageVehicleScreen() {
       ], { cancelable: true, onDismiss: () => { working.current = false; } });
   }
 
-  return <SafeAreaView edges={['bottom']} style={styles.screen}>
-    {loading ? <ActivityIndicator color={colors.green} /> : <>
-      {vehicle && <View style={styles.identity}>
-        <Text style={styles.title}>{vehicle.make} {vehicle.model}</Text>
-        <Text style={styles.registration}>{vehicle.registrationNumber}</Text>
+  return <SafeAreaView edges={['bottom']} style={themed_styles.screen}>
+    {loading ? <ActivityIndicator color={appearance.colors.green} /> : <>
+      {vehicle && <View style={themed_styles.identity}>
+        <Text style={themed_styles.title}>{vehicle.make} {vehicle.model}</Text>
+        <Text style={themed_styles.registration}>{vehicle.registrationNumber}</Text>
       </View>}
-      {error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
-      {vehicle && <View style={styles.dangerZone}>
-        <Text style={styles.dangerTitle}>Danger Zone</Text>
-        <Text style={styles.description}>Permanently remove this vehicle, its photos and all vehicle-related data.</Text>
+      {error && <Text accessibilityRole="alert" style={themed_styles.error}>{error}</Text>}
+      {vehicle && <View style={themed_styles.dangerZone}>
+        <Text style={themed_styles.dangerTitle}>Danger Zone</Text>
+        <Text style={themed_styles.description}>Permanently remove this vehicle, its photos and all vehicle-related data.</Text>
         <Pressable accessibilityRole="button" accessibilityLabel="Delete Vehicle" disabled={busy}
-          onPress={confirmDelete} style={({ pressed }) => [styles.deleteButton, (busy || pressed) && { opacity: 0.6 }]}>
-          <Text style={styles.deleteText}>{busy ? 'Deleting…' : 'Delete Vehicle'}</Text>
+          onPress={confirmDelete} style={({ pressed }) => [themed_styles.deleteButton, (busy || pressed) && { opacity: 0.6 }]}>
+          <Text style={themed_styles.deleteText}>{busy ? 'Deleting…' : 'Delete Vehicle'}</Text>
         </Pressable>
       </View>}
-      <Pressable accessibilityRole="button" disabled={busy} onPress={returnToGarage} style={styles.backButton}>
-        <Text style={styles.registration}>Return to My Garage</Text>
+      <Pressable accessibilityRole="button" disabled={busy} onPress={returnToGarage} style={themed_styles.backButton}>
+        <Text style={themed_styles.registration}>Return to My Garage</Text>
       </Pressable>
     </>}
   </SafeAreaView>;
@@ -85,7 +88,7 @@ const styles = StyleSheet.create({
   dangerTitle: { color: '#FF8585', fontSize: 20, fontWeight: '800' },
   description: { color: colors.muted, fontSize: 15, lineHeight: 23 },
   deleteButton: { minHeight: 48, padding: 12, alignItems: 'center', justifyContent: 'center', borderRadius: 12, backgroundColor: '#B3261E' },
-  deleteText: { color: colors.white, fontSize: 16, fontWeight: '700' },
+  deleteText: { color: '#F5F7F6', fontSize: 16, fontWeight: '700' },
   error: { color: '#FF8585', lineHeight: 22 },
   backButton: { minHeight: 44, justifyContent: 'center', alignItems: 'center' },
 });

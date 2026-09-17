@@ -1,3 +1,4 @@
+import { useThemedStyles, useThemeColor, useAppearance } from '@/features/appearance/appearance-provider';
 import type { ReactNode } from 'react';
 import { router, Stack } from 'expo-router';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -8,30 +9,36 @@ import { displayDate } from '@/features/personal/date';
 import type { Transaction } from '@/features/personal/transaction';
 
 export function PersonalHeader({ title }: { title: string }) {
+  const themed_styles = useThemedStyles(styles);
   return <Stack.Screen options={{ title, headerBackVisible: false, headerLeft: () =>
-    <Pressable accessibilityRole="button" accessibilityLabel="Go back" style={styles.back}
+    <Pressable accessibilityRole="button" accessibilityLabel="Go back" style={themed_styles.back}
       onPress={() => router.canGoBack() ? router.back() : router.replace('/')}>
-      <Text style={styles.accent}>← Back</Text>
+      <Text style={themed_styles.accent}>← Back</Text>
     </Pressable> }} />;
 }
 export function Action({ label, onPress, disabled = false, destructive = false }: { label: string; onPress: () => void; disabled?: boolean; destructive?: boolean }) {
+  const themed_styles = useThemedStyles(styles);
+  const themedColor = useThemeColor();
   return <Pressable accessibilityRole="button" accessibilityState={{ disabled }} disabled={disabled} onPress={onPress}
-    style={({ pressed }) => [styles.action, (pressed || disabled) && { opacity: 0.5 }]}>
-    <Text style={[styles.accent, destructive && { color: '#FF9A9A' }]}>{label}</Text>
+    style={({ pressed }) => [themed_styles.action, (pressed || disabled) && { opacity: 0.5 }]}>
+    <Text style={[themed_styles.accent, destructive && { color: themedColor('#FF9A9A') }]}>{label}</Text>
   </Pressable>;
 }
 export function LoadState({ loading, error, retry }: { loading?: boolean; error?: string | null; retry?: () => void }) {
-  return loading ? <ActivityIndicator color={colors.green} accessibilityLabel="Loading personal expenses" />
-    : error ? <View style={styles.card}><Text accessibilityRole="alert" style={styles.error}>{error}</Text>
+  const themed_styles = useThemedStyles(styles);
+  const appearance = useAppearance();
+  return loading ? <ActivityIndicator color={appearance.colors.green} accessibilityLabel="Loading personal expenses" />
+    : error ? <View style={themed_styles.card}><Text accessibilityRole="alert" style={themed_styles.error}>{error}</Text>
       {retry && <Action label="Try again" onPress={retry} />}</View> : null;
 }
 export function PersonalPage({ title, children, loading, error, retry }: {
   title: string; children?: ReactNode; loading?: boolean; error?: string | null; retry?: () => void;
 }) {
-  return <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.screen}>
+  const themed_styles = useThemedStyles(styles);
+  return <SafeAreaView edges={['left', 'right', 'bottom']} style={themed_styles.screen}>
     <PersonalHeader title={title} />
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={90}>
-      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
+      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={themed_styles.content}>
         <LoadState loading={loading} error={error} retry={retry} />
         {!loading && !error && children}
       </ScrollView>
@@ -39,13 +46,15 @@ export function PersonalPage({ title, children, loading, error, retry }: {
   </SafeAreaView>;
 }
 export function TransactionCard({ transaction }: { transaction: Transaction }) {
+  const themed_styles = useThemedStyles(styles);
+  const appearance = useAppearance();
   const income = transaction.type === 'income';
-  return <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/personal/transaction', params: { id: String(transaction.id) } })} style={styles.card}>
-    <Text style={styles.heading}>{transaction.description || transaction.categoryName}</Text>
-    <Text style={styles.body}>{transaction.categoryName} · {displayDate(transaction.transactionDate)}</Text>
-    {transaction.paymentMethod && <Text style={styles.body}>{transaction.paymentMethod}</Text>}
-    <Text style={[styles.amount, { color: income ? colors.green : '#FFB6A6' }]}>{income ? '+' : '-'}{formatMoney(transaction.amount)}</Text>
-    <Text style={styles.body}>{income ? 'Income' : 'Expense'}</Text>
+  return <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/personal/transaction', params: { id: String(transaction.id) } })} style={themed_styles.card}>
+    <Text style={themed_styles.heading}>{transaction.description || transaction.categoryName}</Text>
+    <Text style={themed_styles.body}>{transaction.categoryName} · {displayDate(transaction.transactionDate)}</Text>
+    {transaction.paymentMethod && <Text style={themed_styles.body}>{transaction.paymentMethod}</Text>}
+    <Text style={[themed_styles.amount, { color: income ? appearance.colors.income : appearance.colors.expense }]}>{income ? '+' : '-'}{formatMoney(transaction.amount)}</Text>
+    <Text style={themed_styles.body}>{income ? 'Income' : 'Expense'}</Text>
   </Pressable>;
 }
 export const styles = StyleSheet.create({

@@ -1,3 +1,4 @@
+import { useThemedStyles, useAppearance } from '@/features/appearance/appearance-provider';
 import { router } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { Pressable, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
@@ -5,6 +6,8 @@ import { Pressable, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-
 import { lifePilotColors as colors } from '@/constants/lifepilot-theme';
 
 export default function HomeScreen() {
+  const themed_styles = useThemedStyles(styles);
+  const appearance = useAppearance();
   function openVehicleManager() {
     if (__DEV__) {
       console.debug('[Home] Vehicle Manager pressed -> /vehicle-manager');
@@ -13,70 +16,74 @@ export default function HomeScreen() {
   }
 
   return (
-    <ScrollView style={{ backgroundColor: colors.background }} contentContainerStyle={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
+    <ScrollView style={{ backgroundColor: appearance.colors.background }} contentContainerStyle={themed_styles.container}>
+      <StatusBar barStyle={appearance.isDark ? 'light-content' : 'dark-content'} backgroundColor={appearance.colors.background} />
 
-      <View style={styles.header}>
-        <Text style={styles.title}>
-          Life<Text style={styles.green}>Pilot</Text>
+      <View style={themed_styles.header}>
+        <Text style={themed_styles.title}>
+          Life<Text style={themed_styles.green}>Pilot</Text>
         </Text>
 
-        <Text style={styles.subtitle}>
+        <Text style={themed_styles.subtitle}>
           Manage your vehicles and personal expenses in one place.
         </Text>
 
-        <View style={styles.accentLine} />
+        <View style={themed_styles.accentLine} />
+        <Pressable accessibilityRole="button" accessibilityLabel="Settings and appearance" onPress={() => router.push('/settings')}
+          style={{ minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start' }}>
+          <Text style={{ color: appearance.colors.green, fontWeight: '700' }}>Settings</Text>
+        </Pressable>
 
-        <Text style={styles.tagline}>
+        <Text style={themed_styles.tagline}>
           DRIVE SMART  •  SPEND WISE  •  LIVE BETTER
         </Text>
         
       </View>
 
-      <View style={styles.cards}>
+      <View style={themed_styles.cards}>
         <Pressable accessibilityRole="button" onPress={() => router.push('/reminders')}
-          style={({ pressed }) => [styles.card, { minHeight: 72 }, pressed && styles.cardPressed]}>
-          <View style={styles.iconBox}>
-            <SymbolView name={{ ios: 'bell', android: 'notifications', web: 'notifications' }} size={26} tintColor={colors.green} />
+          style={({ pressed }) => [themed_styles.card, { minHeight: 72 }, pressed && themed_styles.cardPressed]}>
+          <View style={themed_styles.iconBox}>
+            <SymbolView name={{ ios: 'bell', android: 'notifications', web: 'notifications' }} size={26} tintColor={appearance.colors.green} />
           </View>
-          <View style={styles.cardContent}><Text style={styles.cardTitle}>Vehicle Reminders</Text>
-            <Text style={styles.cardText}>Insurance, PUC and service due dates.</Text></View>
-          <Text style={styles.arrow}>›</Text>
+          <View style={themed_styles.cardContent}><Text style={themed_styles.cardTitle}>Vehicle Reminders</Text>
+            <Text style={themed_styles.cardText}>Insurance, PUC and service due dates.</Text></View>
+          <Text style={themed_styles.arrow}>›</Text>
         </Pressable>
         <Pressable
           accessibilityRole="button"
           onPress={openVehicleManager}
-          style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}>
-          <View style={styles.iconBox}>
-            <Text style={styles.icon}>🚗</Text>
+          style={({ pressed }) => [themed_styles.card, pressed && themed_styles.cardPressed]}>
+          <View style={themed_styles.iconBox}>
+            <Text style={themed_styles.icon}>🚗</Text>
           </View>
 
-          <View style={styles.cardContent}>
-            <Text style={styles.cardTitle}>Vehicle Manager</Text>
-            <Text style={styles.cardText}>
+          <View style={themed_styles.cardContent}>
+            <Text style={themed_styles.cardTitle}>Vehicle Manager</Text>
+            <Text style={themed_styles.cardText}>
               Vehicles, service, fuel, documents, reminders and reports.
             </Text>
           </View>
 
-          <Text style={styles.arrow}>›</Text>
+          <Text style={themed_styles.arrow}>›</Text>
         </Pressable>
 
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Personal Expense Manager"
           onPress={() => router.push('/personal')}
-          style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}>
-          <View style={styles.iconBox}>
-            <SymbolView name={{ ios: 'wallet.pass', android: 'account_balance_wallet', web: 'account_balance_wallet' }} size={26} tintColor={colors.green} />
+          style={({ pressed }) => [themed_styles.card, pressed && themed_styles.cardPressed]}>
+          <View style={themed_styles.iconBox}>
+            <SymbolView name={{ ios: 'wallet.pass', android: 'account_balance_wallet', web: 'account_balance_wallet' }} size={26} tintColor={appearance.colors.green} />
           </View>
 
-          <View style={styles.cardContent}>
-            <Text style={styles.cardTitle}>Personal Expense Manager</Text>
-            <Text style={styles.cardText}>
+          <View style={themed_styles.cardContent}>
+            <Text style={themed_styles.cardTitle}>Personal Expense Manager</Text>
+            <Text style={themed_styles.cardText}>
               Personal expenses, income, categories and transaction history.
             </Text>
           </View>
-          <Text style={styles.arrow}>›</Text>
+          <Text style={themed_styles.arrow}>›</Text>
         </Pressable>
       </View>
     </ScrollView>

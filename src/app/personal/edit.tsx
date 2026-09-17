@@ -1,3 +1,4 @@
+import { useThemedStyles } from '@/features/appearance/appearance-provider';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
@@ -15,6 +16,7 @@ import { personalDiagnostic } from '@/features/personal/diagnostics';
 export { PersonalErrorBoundary as ErrorBoundary } from '@/components/personal/error-boundary';
 
 export default function TransactionEditor() {
+  const themed_styles = useThemedStyles(styles);
   const { id } = useLocalSearchParams<{ id?: string }>(), db = useSQLiteContext();
   const [categories, setCategories] = useState<Category[]>([]), [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null), [attempt, setAttempt] = useState(0);
@@ -65,11 +67,11 @@ export default function TransactionEditor() {
   }
   const available = categories.filter((category) => category.type === draft.type);
   return <PersonalPage title={id === undefined ? 'Add Transaction' : 'Edit Transaction'} loading={loading} error={error} retry={() => { setLoading(true); setError(null); setAttempt((value) => value + 1); }}>
-    {saved && <View style={styles.card}><Text style={styles.heading}>Transaction saved</Text>
-      <Text style={styles.body}>Continue to leave this screen. Your transaction will not be saved again.</Text>
+    {saved && <View style={themed_styles.card}><Text style={themed_styles.heading}>Transaction saved</Text>
+      <Text style={themed_styles.body}>Continue to leave this screen. Your transaction will not be saved again.</Text>
       <Action label="Continue" disabled={busy} onPress={() => { void save(); }} /></View>}
     <View style={{ gap: 20 }} pointerEvents={busy || saved ? 'none' : 'auto'}>
-      <Text style={styles.title}>{id === undefined ? 'Add Transaction' : 'Edit Transaction'}</Text>
+      <Text style={themed_styles.title}>{id === undefined ? 'Add Transaction' : 'Edit Transaction'}</Text>
       <OptionSelector label="Type *" options={['Expense', 'Income']} value={draft.type === 'income' ? 'Income' : 'Expense'} onChange={(value) => setDraft((current) => ({ ...current, type: value.toLowerCase(), categoryId: '' }))} />
       <FormTextField label="Amount (₹) *" value={draft.amount} onChangeText={(value) => field('amount', value)} keyboardType="decimal-pad" placeholder="1250.50" maxLength={20} editable={!busy} />
       <OptionSelector label="Category *" options={available.map((category) => category.name)} value={available.find((category) => category.id === draft.categoryId)?.name ?? ''}

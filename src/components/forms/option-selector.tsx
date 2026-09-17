@@ -1,3 +1,4 @@
+import { useThemedStyles } from '@/features/appearance/appearance-provider';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { lifePilotColors as colors } from '@/constants/lifepilot-theme';
@@ -11,10 +12,11 @@ type OptionSelectorProps = {
 };
 
 export function OptionSelector({ error, label, onChange, options, value }: OptionSelectorProps) {
+  const themed_styles = useThemedStyles(styles);
   return (
-    <View style={styles.field}>
-      <Text style={styles.label}>{label}</Text>
-      <View accessibilityRole="radiogroup" style={styles.options}>
+    <View style={themed_styles.field}>
+      <Text style={themed_styles.label}>{label}</Text>
+      <View accessibilityRole="radiogroup" style={themed_styles.options}>
         {options.map((option) => {
           const selected = option === value;
 
@@ -25,16 +27,16 @@ export function OptionSelector({ error, label, onChange, options, value }: Optio
               key={option}
               onPress={() => onChange(option)}
               style={({ pressed }) => [
-                styles.option,
-                selected && styles.optionSelected,
-                pressed && styles.optionPressed,
+                themed_styles.option,
+                selected && themed_styles.optionSelected,
+                pressed && themed_styles.optionPressed,
               ]}>
-              <Text style={[styles.optionText, selected && styles.optionTextSelected]}>{option}</Text>
+              <Text style={[themed_styles.optionText, selected && themed_styles.optionTextSelected]}>{option}</Text>
             </Pressable>
           );
         })}
       </View>
-      {error && <Text style={styles.error}>{error}</Text>}
+      {error && <Text style={themed_styles.error}>{error}</Text>}
     </View>
   );
 }

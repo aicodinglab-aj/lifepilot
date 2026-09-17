@@ -1,3 +1,4 @@
+import { useThemedStyles } from '@/features/appearance/appearance-provider';
 import { useCallback, useState } from 'react';
 import { router, useFocusEffect } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
@@ -10,6 +11,7 @@ import { useCoverageSummary } from '@/features/vehicles/use-coverage';
 import { useVehicle } from '@/features/vehicles/use-vehicle';
 
 export default function InsurancePucScreen() {
+  const themed_styles = useThemedStyles(styles);
   const state = useVehicle();
   const summary = useCoverageSummary(state.vehicleId);
   const db = useSQLiteContext();
@@ -27,23 +29,23 @@ export default function InsurancePucScreen() {
   return <VehiclePage title="Insurance & PUC" loading={state.loading || summary.loading} error={state.error || summary.error}
     reload={() => { state.reload(); summary.reload(); }}>
     {state.vehicle && summary.data && <>
-      <Text style={styles.eyebrow}>{state.vehicle.registrationNumber}</Text>
-      <Text style={styles.title}>Insurance & PUC</Text>
-      {warning && <View style={styles.card}><Text accessibilityRole="alert" style={styles.body}>{warning}</Text>
+      <Text style={themed_styles.eyebrow}>{state.vehicle.registrationNumber}</Text>
+      <Text style={themed_styles.title}>Insurance & PUC</Text>
+      {warning && <View style={themed_styles.card}><Text accessibilityRole="alert" style={themed_styles.body}>{warning}</Text>
         <CoverageAction label="Retry cleanup" onPress={() => setRetry((n) => n + 1)} /></View>}
       {(['insurance', 'puc'] as const).map((kind) => {
         const record = summary.data?.[kind] ?? null;
         const params = { id: String(state.vehicleId), kind };
-        return <View key={kind} style={styles.card}>
-          <Text style={styles.sectionTitle}>{coverageTitle(kind)}</Text>
+        return <View key={kind} style={themed_styles.card}>
+          <Text style={themed_styles.sectionTitle}>{coverageTitle(kind)}</Text>
           <CoverageStatusBadge record={record} today={summary.today} />
-          {record?.provider && <Text style={styles.body}>{record.provider}</Text>}
+          {record?.provider && <Text style={themed_styles.body}>{record.provider}</Text>}
           {record && <CoverageAction label={`View ${coverageTitle(kind)}`} onPress={() => router.push({ pathname: '/vehicle/coverage-details', params: { ...params, recordId: record.id } })} />}
           <CoverageAction label={`Add ${coverageTitle(kind)}`} onPress={() => router.push({ pathname: '/vehicle/coverage-edit', params })} />
           <CoverageAction label={`${coverageTitle(kind)} history`} onPress={() => router.push({ pathname: '/vehicle/coverage-history', params })} />
         </View>;
       })}
-      <Text style={styles.body}>Expiring soon means within 30 days. Current coverage is shown before future renewals; all records remain in history.</Text>
+      <Text style={themed_styles.body}>Expiring soon means within 30 days. Current coverage is shown before future renewals; all records remain in history.</Text>
     </>}
   </VehiclePage>;
 }

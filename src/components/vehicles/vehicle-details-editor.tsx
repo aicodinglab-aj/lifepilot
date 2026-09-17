@@ -1,3 +1,4 @@
+import { useThemedStyles } from '@/features/appearance/appearance-provider';
 import { useRef, useState } from 'react';
 import { router } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
@@ -11,6 +12,7 @@ import { fuelTypes, type Vehicle } from '@/features/vehicles/vehicle';
 import { validateVehicleDetails, vehicleDetailSections, vehicleToDetailsForm, type VehicleDetailsErrors, type VehicleDetailsForm } from '@/features/vehicles/vehicle-details';
 
 export function VehicleDetailsEditor({ vehicle }: { vehicle: Vehicle }) {
+  const themed_styles = useThemedStyles(styles);
   const db = useSQLiteContext();
   const [form, setForm] = useState(() => vehicleToDetailsForm(vehicle));
   const [errors, setErrors] = useState<VehicleDetailsErrors>({});
@@ -45,14 +47,14 @@ export function VehicleDetailsEditor({ vehicle }: { vehicle: Vehicle }) {
       scroll.current?.scrollTo({ y: 0, animated: true });
     } finally { working.current = false; setSaving(false); }
   }
-  return <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={100}>
-    <ScrollView ref={scroll} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
-      <Text style={styles.intro}>Keep your vehicle information up to date. Optional fields can be left empty.</Text>
-      {submitError && <Text accessibilityRole="alert" style={styles.error}>{submitError}</Text>}
-      {vehicleDetailSections.map((section) => <View key={section.title} style={styles.section}>
-        <Text style={styles.title}>{section.title}</Text>
+  return <KeyboardAvoidingView style={themed_styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={100}>
+    <ScrollView ref={scroll} contentContainerStyle={themed_styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
+      <Text style={themed_styles.intro}>Keep your vehicle information up to date. Optional fields can be left empty.</Text>
+      {submitError && <Text accessibilityRole="alert" style={themed_styles.error}>{submitError}</Text>}
+      {vehicleDetailSections.map((section) => <View key={section.title} style={themed_styles.section}>
+        <Text style={themed_styles.title}>{section.title}</Text>
         {section.fields.map(({ key, label, optional, numeric, date }) => key === 'vehicleType'
-          ? <View key={key}><Text style={styles.intro}>{label}</Text><Text style={styles.readOnly}>{vehicle.vehicleType}</Text></View>
+          ? <View key={key}><Text style={themed_styles.intro}>{label}</Text><Text style={themed_styles.readOnly}>{vehicle.vehicleType}</Text></View>
           : key === 'fuelType' ? <OptionSelector key={key} label={label} options={fuelTypes} value={form.fuelType}
             onChange={(value) => update('fuelType', value)} error={errors.fuelType} />
             : <FormTextField key={key} label={label} optional={optional} value={form[key]} error={errors[key]}
@@ -62,8 +64,8 @@ export function VehicleDetailsEditor({ vehicle }: { vehicle: Vehicle }) {
               autoCapitalize={key === 'registrationNumber' || key === 'chassisNumber' || key === 'engineNumber' ? 'characters' : 'sentences'} />)}
       </View>)}
       <Pressable accessibilityRole="button" accessibilityLabel="Save vehicle details" accessibilityState={{ disabled: saving }}
-        disabled={saving} onPress={() => { void save(); }} style={({ pressed }) => [styles.save, (saving || pressed) && { opacity: 0.6 }]}>
-        <Text style={styles.saveText}>{saving ? 'Saving…' : 'Save changes'}</Text>
+        disabled={saving} onPress={() => { void save(); }} style={({ pressed }) => [themed_styles.save, (saving || pressed) && { opacity: 0.6 }]}>
+        <Text style={themed_styles.saveText}>{saving ? 'Saving…' : 'Save changes'}</Text>
       </Pressable>
     </ScrollView>
   </KeyboardAvoidingView>;

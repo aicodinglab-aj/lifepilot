@@ -1,3 +1,4 @@
+import { useThemedStyles } from '@/features/appearance/appearance-provider';
 import { useCallback, useState } from 'react';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
@@ -24,6 +25,7 @@ export default function TransactionHistory() {
   return <History key={JSON.stringify(initialFilter)} initialFilter={initialFilter} />;
 }
 function History({ initialFilter }: { initialFilter: HistoryFilter }) {
+  const themed_styles = useThemedStyles(styles);
   const db = useSQLiteContext();
   const [filter, setFilter] = useState<HistoryFilter>(initialFilter);
   const [month, setMonth] = useState(initialFilter.month ?? localToday().slice(0, 7));
@@ -31,18 +33,18 @@ function History({ initialFilter }: { initialFilter: HistoryFilter }) {
   const cursor = pages[pages.length - 1];
   const state = usePersonalQuery(useCallback(() => getTransactions(db, filter, cursor), [db, filter, cursor]));
   function changeFilter(next: HistoryFilter) { setPages([undefined]); setFilter(next); }
-  return <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.screen}>
+  return <SafeAreaView edges={['left', 'right', 'bottom']} style={themed_styles.screen}>
     <PersonalHeader title="Transaction History" />
     <FlatList data={state.loading || state.error ? [] : state.data?.rows ?? []} keyExtractor={(item) => String(item.id)}
-      contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled"
+      contentContainerStyle={themed_styles.content} keyboardShouldPersistTaps="handled"
       renderItem={({ item }) => <TransactionCard transaction={item} />}
       ListHeaderComponent={<View style={{ gap: 18 }}>
-        <Text style={styles.title}>Transactions</Text>
+        <Text style={themed_styles.title}>Transactions</Text>
         <Action label="Add Transaction" onPress={() => router.push('/personal/edit')} />
         <OptionSelector label="Transaction type" options={['All', 'Expenses', 'Income']}
           value={filter.type === 'expense' ? 'Expenses' : filter.type === 'income' ? 'Income' : 'All'}
           onChange={(value) => changeFilter({ ...filter, categoryId: undefined, type: value === 'Expenses' ? 'expense' : value === 'Income' ? 'income' : undefined })} />
-        {filter.categoryId && <><Text style={styles.body}>Showing the selected category</Text>
+        {filter.categoryId && <><Text style={themed_styles.body}>Showing the selected category</Text>
           <Action label="Clear category filter" onPress={() => changeFilter({ ...filter, categoryId: undefined })} /></>}
         <FormTextField label="Month (YYYY-MM)" value={month} onChangeText={setMonth} placeholder="YYYY-MM" maxLength={7} />
         <Action label="Apply month" onPress={() => {
@@ -50,10 +52,10 @@ function History({ initialFilter }: { initialFilter: HistoryFilter }) {
           catch (cause) { Alert.alert('Invalid month', cause instanceof Error ? cause.message : 'Use YYYY-MM.'); }
         }} />
         <Action label="All dates" onPress={() => changeFilter({ ...filter, month: undefined })} />
-        <Text style={styles.body}>{filter.month || 'All dates'} · Page {pages.length}</Text>
+        <Text style={themed_styles.body}>{filter.month || 'All dates'} · Page {pages.length}</Text>
         <LoadState loading={state.loading} error={state.error} retry={state.retry} />
       </View>}
-      ListEmptyComponent={!state.loading && !state.error ? <View style={styles.card}><Text style={styles.heading}>No transactions found</Text><Text style={styles.body}>Add a transaction or try another filter.</Text></View> : null}
+      ListEmptyComponent={!state.loading && !state.error ? <View style={themed_styles.card}><Text style={themed_styles.heading}>No transactions found</Text><Text style={themed_styles.body}>Add a transaction or try another filter.</Text></View> : null}
       ListFooterComponent={<View style={{ gap: 12 }}>
         {pages.length > 1 && <Action label="Previous page" disabled={state.loading} onPress={() => setPages((current) => current.slice(0, -1))} />}
         {!state.error && state.data?.hasMore && <Action label="Next page" disabled={state.loading} onPress={() => {

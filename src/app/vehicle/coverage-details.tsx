@@ -1,3 +1,4 @@
+import { useThemedStyles } from '@/features/appearance/appearance-provider';
 import { useCallback, useRef, useState } from 'react';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
@@ -14,6 +15,7 @@ import { serviceMoney } from '@/features/vehicles/service-record';
 import { availableCoverageDocumentUri } from '@/storage/coverage-documents';
 
 export default function CoverageDetailsScreen() {
+  const themed_styles = useThemedStyles(styles);
   const { kind: routeKind, id, recordId } = useLocalSearchParams<{ kind: string; id: string; recordId: string }>();
   const vehicleId = parseVehicleId(id);
   const db = useSQLiteContext(), today = useCoverageToday();
@@ -60,16 +62,16 @@ export default function CoverageDetailsScreen() {
   if (loading || error || !record) return <VehiclePage title={`${title} Details`} loading={loading} error={error} reload={() => setRetry((n) => n + 1)} />;
   const kind = parseCoverageKind(routeKind);
   return <VehiclePage title={`${title} Details`}>
-    <Text style={styles.title}>{title} Details</Text>
-    <View style={styles.card}><CoverageStatusBadge record={record} today={today} /></View>
-    <View style={styles.card}>{coverageFields(kind).map((field) => {
+    <Text style={themed_styles.title}>{title} Details</Text>
+    <View style={themed_styles.card}><CoverageStatusBadge record={record} today={today} /></View>
+    <View style={themed_styles.card}>{coverageFields(kind).map((field) => {
       const value = record[field.key];
-      return <View key={field.key} style={styles.section}><Text style={styles.body}>{field.label}</Text>
-        <Text selectable style={styles.accent}>{field.numeric ? serviceMoney(record.amount) : field.date ? coverageDate(typeof value === 'string' ? value : null) : value == null ? 'Not added' : String(value)}</Text></View>;
+      return <View key={field.key} style={themed_styles.section}><Text style={themed_styles.body}>{field.label}</Text>
+        <Text selectable style={themed_styles.accent}>{field.numeric ? serviceMoney(record.amount) : field.date ? coverageDate(typeof value === 'string' ? value : null) : value == null ? 'Not added' : String(value)}</Text></View>;
     })}</View>
     <CoverageAction label={`Edit ${title}`} disabled={busy} onPress={() => router.push({ pathname: '/vehicle/coverage-edit', params: { id: String(vehicleId), kind, recordId } })} />
-    <Text style={styles.sectionTitle}>Attached Documents</Text>
-    {!documents.length && <Text style={styles.body}>Not added</Text>}
+    <Text style={themed_styles.sectionTitle}>Attached Documents</Text>
+    {!documents.length && <Text style={themed_styles.body}>Not added</Text>}
     {documents.map((doc, index) => {
       const uri = availableCoverageDocumentUri(kind, doc);
       return <Pressable key={doc.id} accessibilityRole="button" accessibilityLabel={`View document ${index + 1}`} disabled={!uri} onPress={() => setViewing(uri)}>

@@ -1,3 +1,4 @@
+import { useThemedStyles, useAppearance } from '@/features/appearance/appearance-provider';
 import { useCallback, useRef, useState } from 'react';
 import { router, useFocusEffect } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
@@ -12,6 +13,8 @@ import { retryServiceCleanup } from '@/features/vehicles/service-maintenance';
 import { useVehicle } from '@/features/vehicles/use-vehicle';
 
 export default function ServiceHistoryScreen() {
+  const themed_styles = useThemedStyles(styles);
+  const appearance = useAppearance();
   const vehicleState = useVehicle();
   const { vehicle, vehicleId } = vehicleState;
   const db = useSQLiteContext();
@@ -61,35 +64,35 @@ export default function ServiceHistoryScreen() {
     return <VehiclePage title="Service & Maintenance" loading={vehicleState.loading || loading}
       error={vehicleState.error || error} reload={() => { vehicleState.reload(); setRetry((n) => n + 1); }} />;
   }
-  return <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.screen}>
+  return <SafeAreaView edges={['left', 'right', 'bottom']} style={themed_styles.screen}>
     <VehicleHeader title="Service & Maintenance" action={{ label: 'Add Service', onPress: add }} />
-    <FlatList data={records} keyExtractor={(item) => item.id} contentContainerStyle={styles.content}
+    <FlatList data={records} keyExtractor={(item) => item.id} contentContainerStyle={themed_styles.content}
       onEndReached={() => { if (!pageError) void loadMore(); }} onEndReachedThreshold={0.4}
-      ListHeaderComponent={<View style={styles.section}>
-        <Text style={styles.eyebrow}>{vehicle.registrationNumber}</Text>
-        <Text style={styles.title}>Service & Maintenance</Text>
-        <View style={styles.card}>
-          <Text style={styles.body}>Latest Service</Text><Text style={styles.accent}>{summary?.latest?.serviceDate ?? 'Not added'}</Text>
-          <Text style={styles.body}>Next Service</Text><Text style={styles.accent}>{nextServiceLabel(summary?.latest ?? null)}</Text>
-          <Text style={styles.body}>Total Maintenance Cost</Text><Text style={styles.sectionTitle}>{serviceMoney(summary?.total ?? null)}</Text>
-          {!!summary?.missing && <Text style={styles.body}>{summary.missing} service(s) have no costs added.</Text>}
-          <Text style={styles.body}>Next service uses the latest service record.</Text>
+      ListHeaderComponent={<View style={themed_styles.section}>
+        <Text style={themed_styles.eyebrow}>{vehicle.registrationNumber}</Text>
+        <Text style={themed_styles.title}>Service & Maintenance</Text>
+        <View style={themed_styles.card}>
+          <Text style={themed_styles.body}>Latest Service</Text><Text style={themed_styles.accent}>{summary?.latest?.serviceDate ?? 'Not added'}</Text>
+          <Text style={themed_styles.body}>Next Service</Text><Text style={themed_styles.accent}>{nextServiceLabel(summary?.latest ?? null)}</Text>
+          <Text style={themed_styles.body}>Total Maintenance Cost</Text><Text style={themed_styles.sectionTitle}>{serviceMoney(summary?.total ?? null)}</Text>
+          {!!summary?.missing && <Text style={themed_styles.body}>{summary.missing} service(s) have no costs added.</Text>}
+          <Text style={themed_styles.body}>Next service uses the latest service record.</Text>
         </View>
-        {cleanupError && <View style={styles.card}><Text accessibilityRole="alert" style={styles.body}>{cleanupError}</Text>
+        {cleanupError && <View style={themed_styles.card}><Text accessibilityRole="alert" style={themed_styles.body}>{cleanupError}</Text>
           <ServiceAction label="Retry cleanup" onPress={() => setRetry((n) => n + 1)} /></View>}
       </View>}
-      ListEmptyComponent={<View style={styles.card}><Text style={styles.sectionTitle}>No service records yet</Text>
-        <Text style={styles.body}>Keep workshop visits, maintenance costs and bills together for this vehicle.</Text>
+      ListEmptyComponent={<View style={themed_styles.card}><Text style={themed_styles.sectionTitle}>No service records yet</Text>
+        <Text style={themed_styles.body}>Keep workshop visits, maintenance costs and bills together for this vehicle.</Text>
         <ServiceAction label="Add Service" onPress={add} /></View>}
-      ListFooterComponent={paging ? <ActivityIndicator color={colors.green} /> : pageError ? <View style={styles.section}>
-        <Text style={styles.body}>{pageError}</Text><ServiceAction label="Try again" onPress={() => { void loadMore(); }} /></View> : null}
+      ListFooterComponent={paging ? <ActivityIndicator color={appearance.colors.green} /> : pageError ? <View style={themed_styles.section}>
+        <Text style={themed_styles.body}>{pageError}</Text><ServiceAction label="Try again" onPress={() => { void loadMore(); }} /></View> : null}
       renderItem={({ item }) => <Pressable accessibilityRole="button" accessibilityLabel={`View ${item.title}, ${item.serviceDate}`}
-        onPress={() => router.push({ pathname: '/vehicle/service-details', params: { id: String(vehicleId), serviceId: item.id } })} style={styles.card}>
-        <Text style={styles.eyebrow}>{item.serviceDate} · {item.odometer.toLocaleString()} km</Text>
-        <Text style={styles.sectionTitle}>{item.title}</Text>
-        {item.workshop && <Text style={styles.body}>{item.workshop}</Text>}
-        <Text style={styles.accent}>{serviceMoney(item.totalCost)}</Text>
-        {(item.nextServiceDate || item.nextServiceOdometer != null) && <Text style={styles.body}>Next: {nextServiceLabel(item)}</Text>}
+        onPress={() => router.push({ pathname: '/vehicle/service-details', params: { id: String(vehicleId), serviceId: item.id } })} style={themed_styles.card}>
+        <Text style={themed_styles.eyebrow}>{item.serviceDate} · {item.odometer.toLocaleString()} km</Text>
+        <Text style={themed_styles.sectionTitle}>{item.title}</Text>
+        {item.workshop && <Text style={themed_styles.body}>{item.workshop}</Text>}
+        <Text style={themed_styles.accent}>{serviceMoney(item.totalCost)}</Text>
+        {(item.nextServiceDate || item.nextServiceOdometer != null) && <Text style={themed_styles.body}>Next: {nextServiceLabel(item)}</Text>}
       </Pressable>} />
   </SafeAreaView>;
 }

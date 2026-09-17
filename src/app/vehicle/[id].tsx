@@ -1,3 +1,4 @@
+import { useThemedStyles } from '@/features/appearance/appearance-provider';
 import { router, type Href } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { VehiclePage, vehiclePageStyles as shared } from '@/components/vehicles/vehicle-page';
@@ -10,6 +11,8 @@ import { coverageStatus } from '@/features/vehicles/coverage-status';
 import { VehicleMileageReminder } from '@/components/vehicles/mileage-reminder';
 
 export default function VehicleOverviewScreen() {
+  const themed_styles = useThemedStyles(styles);
+  const themed_shared = useThemedStyles(shared);
   const state = useVehicle();
   const { vehicle, vehicleId } = state;
   const coverage = useCoverageSummary(vehicleId);
@@ -18,34 +21,34 @@ export default function VehicleOverviewScreen() {
   const params = { id: String(vehicleId) };
   return <VehiclePage title="My Vehicle" {...state} vehicleId={vehicle ? vehicleId : undefined}>
     {vehicle && <>
-      <View style={styles.hero}>
+      <View style={themed_styles.hero}>
         <Pressable accessibilityRole="button" accessibilityLabel="Open vehicle photos"
           onPress={() => router.push({ pathname: '/vehicle/photos', params })}>
-          <VehiclePhotoImage vehicleId={vehicleId} photoId={vehicle.coverPhotoId} uri={vehicle.coverPhotoUri} style={styles.cover} />
-          <View pointerEvents="none" style={styles.photoBadge}><Text style={styles.photoBadgeText}>View photos ↗</Text></View>
+          <VehiclePhotoImage vehicleId={vehicleId} photoId={vehicle.coverPhotoId} uri={vehicle.coverPhotoUri} style={themed_styles.cover} />
+          <View pointerEvents="none" style={themed_styles.photoBadge}><Text style={themed_styles.photoBadgeText}>View photos ↗</Text></View>
         </Pressable>
-        <View style={styles.identity}>
-          <Text style={shared.eyebrow}>YOUR VEHICLE</Text>
-          <Text style={shared.title}>{vehicle.make} {vehicle.model}</Text>
-          <Text style={styles.registration}>{vehicle.registrationNumber}</Text>
-          <View style={styles.metrics}>
+        <View style={themed_styles.identity}>
+          <Text style={themed_shared.eyebrow}>YOUR VEHICLE</Text>
+          <Text style={themed_shared.title}>{vehicle.make} {vehicle.model}</Text>
+          <Text style={themed_styles.registration}>{vehicle.registrationNumber}</Text>
+          <View style={themed_styles.metrics}>
             <Metric label="MODEL YEAR" value={String(vehicle.modelYear)} />
             <Metric label="ODOMETER" value={`${vehicle.odometerKm.toLocaleString()} km`} />
             <Metric label="FUEL TYPE" value={vehicle.fuelType} />
           </View>
         </View>
       </View>
-      <View style={styles.section}>
-        <Text style={shared.sectionTitle}>Quick Status</Text>
-        <View style={styles.statusRow}>
+      <View style={themed_styles.section}>
+        <Text style={themed_shared.sectionTitle}>Quick Status</Text>
+        <View style={themed_styles.statusRow}>
           <Status label="Next Service" value="View Service & Maintenance" />
           <Status label="Insurance" value={status('insurance')} />
           <Status label="PUC / Pollution" value={status('puc')} />
         </View>
         <VehicleMileageReminder vehicleId={vehicleId} odometer={vehicle.odometerKm} />
       </View>
-      <View style={styles.section}>
-        <Text style={shared.sectionTitle}>Manage your vehicle</Text>
+      <View style={themed_styles.section}>
+        <Text style={themed_shared.sectionTitle}>Manage your vehicle</Text>
         <NavigationCard icon="≡" title="Vehicle Details" subtitle="Model, chassis, engine, purchase info"
           href={{ pathname: '/vehicle/details', params }} />
         {Object.entries(vehicleModules).map(([module, item]) => <NavigationCard key={module}
@@ -59,17 +62,21 @@ export default function VehicleOverviewScreen() {
 }
 
 function Metric({ label, value }: { label: string; value: string }) {
-  return <View style={styles.metric}><Text style={styles.metricLabel}>{label}</Text><Text style={styles.metricValue}>{value}</Text></View>;
+  const themed_styles = useThemedStyles(styles);
+  return <View style={themed_styles.metric}><Text style={themed_styles.metricLabel}>{label}</Text><Text style={themed_styles.metricValue}>{value}</Text></View>;
 }
 function Status({ label, value }: { label: string; value: string }) {
-  return <View style={styles.status}><View style={styles.statusMark} /><Text style={styles.statusLabel}>{label}</Text><Text style={styles.statusValue}>{value}</Text></View>;
+  const themed_styles = useThemedStyles(styles);
+  return <View style={themed_styles.status}><View style={themed_styles.statusMark} /><Text style={themed_styles.statusLabel}>{label}</Text><Text style={themed_styles.statusValue}>{value}</Text></View>;
 }
 function NavigationCard({ icon, title, subtitle, href }: { icon: string; title: string; subtitle: string; href: Href }) {
+  const themed_styles = useThemedStyles(styles);
+  const themed_shared = useThemedStyles(shared);
   return <Pressable accessibilityRole="button" accessibilityLabel={title} onPress={() => router.push(href)}
-    style={({ pressed }) => [styles.navigationCard, pressed && { opacity: 0.7 }]}>
-    <View style={styles.iconBox}><Text style={styles.icon}>{icon}</Text></View>
-    <View style={styles.navigationText}><Text style={styles.navigationTitle}>{title}</Text><Text style={shared.body}>{subtitle}</Text></View>
-    <Text style={styles.chevron}>›</Text>
+    style={({ pressed }) => [themed_styles.navigationCard, pressed && { opacity: 0.7 }]}>
+    <View style={themed_styles.iconBox}><Text style={themed_styles.icon}>{icon}</Text></View>
+    <View style={themed_styles.navigationText}><Text style={themed_styles.navigationTitle}>{title}</Text><Text style={themed_shared.body}>{subtitle}</Text></View>
+    <Text style={themed_styles.chevron}>›</Text>
   </Pressable>;
 }
 const styles = StyleSheet.create({

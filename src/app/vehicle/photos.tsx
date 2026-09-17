@@ -1,3 +1,4 @@
+import { useThemedStyles, useAppearance } from '@/features/appearance/appearance-provider';
 import { useCallback, useRef, useState } from 'react';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
@@ -13,6 +14,8 @@ import type { Vehicle } from '@/features/vehicles/vehicle';
 import type { VehiclePhoto } from '@/features/vehicles/vehicle-photo';
 
 export default function VehiclePhotosScreen() {
+  const themed_styles = useThemedStyles(styles);
+  const appearance = useAppearance();
   const { id } = useLocalSearchParams<{ id: string }>();
   const vehicleId = typeof id === 'string' && /^[1-9]\d*$/.test(id) ? Number(id) : NaN;
   const db = useSQLiteContext();
@@ -52,29 +55,29 @@ export default function VehiclePhotosScreen() {
     ]);
   }
 
-  if (loading) return <View style={styles.center}><VehicleHeader title="Documents & Photos" /><ActivityIndicator color={colors.green} /></View>;
-  if (error || !vehicle) return <View style={styles.center}><VehicleHeader title="Documents & Photos" /><Text style={styles.text}>{error}</Text><Action label="Try again" onPress={() => { void load(); }} /></View>;
+  if (loading) return <View style={themed_styles.center}><VehicleHeader title="Documents & Photos" /><ActivityIndicator color={appearance.colors.green} /></View>;
+  if (error || !vehicle) return <View style={themed_styles.center}><VehicleHeader title="Documents & Photos" /><Text style={themed_styles.text}>{error}</Text><Action label="Try again" onPress={() => { void load(); }} /></View>;
   const cover = photos.find((photo) => photo.isCover === 1);
-  return <SafeAreaView edges={['bottom']} style={styles.screen}>
+  return <SafeAreaView edges={['bottom']} style={themed_styles.screen}>
     <VehicleHeader title="Documents & Photos" vehicleId={busy ? undefined : vehicleId} />
     <FlatList data={photos} keyExtractor={(photo) => photo.id} numColumns={2}
-      contentContainerStyle={styles.content} columnWrapperStyle={styles.row}
-      ListHeaderComponent={<View style={styles.heading}>
-        <Text style={styles.title}>{vehicle.make} {vehicle.model}</Text>
-        <Text style={styles.accent}>{vehicle.registrationNumber}</Text>
-        <Text style={styles.text}>{vehicle.modelYear} · {vehicle.vehicleType} · {vehicle.fuelType}</Text>
-        <Text style={styles.text}>{vehicle.odometerKm.toLocaleString()} km{vehicle.variant ? ` · ${vehicle.variant}` : ''}</Text>
+      contentContainerStyle={themed_styles.content} columnWrapperStyle={themed_styles.row}
+      ListHeaderComponent={<View style={themed_styles.heading}>
+        <Text style={themed_styles.title}>{vehicle.make} {vehicle.model}</Text>
+        <Text style={themed_styles.accent}>{vehicle.registrationNumber}</Text>
+        <Text style={themed_styles.text}>{vehicle.modelYear} · {vehicle.vehicleType} · {vehicle.fuelType}</Text>
+        <Text style={themed_styles.text}>{vehicle.odometerKm.toLocaleString()} km{vehicle.variant ? ` · ${vehicle.variant}` : ''}</Text>
         <VehiclePhotoImage vehicleId={vehicleId} photoId={cover?.id ?? null} uri={cover?.localUri ?? null} style={{ height: 230 }} />
-        <Text style={styles.title}>Photos ({photos.length})</Text>
-        <Text style={styles.text}>Your vehicle photo gallery. Document uploads are coming in a future update.</Text>
-        <View style={styles.row}>
+        <Text style={themed_styles.title}>Photos ({photos.length})</Text>
+        <Text style={themed_styles.text}>Your vehicle photo gallery. Document uploads are coming in a future update.</Text>
+        <View style={themed_styles.row}>
           <Action label="Add photos" disabled={busy} onPress={() => { void perform(() => addVehiclePhotos(db, vehicleId, false)); }} />
           <Action label="Take photo" disabled={busy} onPress={() => { void perform(() => addVehiclePhotos(db, vehicleId, true)); }} />
         </View>
-        {busy && <ActivityIndicator color={colors.green} accessibilityLabel="Saving photo changes" />}
+        {busy && <ActivityIndicator color={appearance.colors.green} accessibilityLabel="Saving photo changes" />}
       </View>}
-      ListEmptyComponent={<Text style={styles.text}>Add photos from your gallery or take a photo to start.</Text>}
-      renderItem={({ item }) => <View style={styles.tile}>
+      ListEmptyComponent={<Text style={themed_styles.text}>Add photos from your gallery or take a photo to start.</Text>}
+      renderItem={({ item }) => <View style={themed_styles.tile}>
         <Pressable accessibilityRole="button" accessibilityLabel="View photo" onPress={() => setViewing(item)}>
           <VehiclePhotoImage vehicleId={vehicleId} photoId={item.id} uri={item.localUri} style={{ height: 150 }} />
         </Pressable>
@@ -83,7 +86,7 @@ export default function VehiclePhotosScreen() {
         <Action label="Delete" disabled={busy} onPress={() => confirmDelete(item)} />
       </View>} />
     <Modal visible={!!viewing} animationType="fade" onRequestClose={() => setViewing(null)}>
-      <SafeAreaView style={styles.viewer}>
+      <SafeAreaView style={themed_styles.viewer}>
         <Action label="Close photo" onPress={() => setViewing(null)} />
         {viewing && <VehiclePhotoImage vehicleId={vehicleId} photoId={viewing.id} uri={viewing.localUri} contain style={{ flex: 1 }} />}
       </SafeAreaView>
@@ -92,8 +95,9 @@ export default function VehiclePhotosScreen() {
 }
 
 function Action({ label, onPress, disabled = false }: { label: string; onPress: () => void; disabled?: boolean }) {
+  const themed_styles = useThemedStyles(styles);
   return <Pressable accessibilityRole="button" accessibilityState={{ disabled }} disabled={disabled} onPress={onPress}
-    style={[styles.button, disabled && { opacity: 0.45 }]}><Text style={styles.accent}>{label}</Text></Pressable>;
+    style={[themed_styles.button, disabled && { opacity: 0.45 }]}><Text style={themed_styles.accent}>{label}</Text></Pressable>;
 }
 
 const styles = StyleSheet.create({

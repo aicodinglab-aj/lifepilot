@@ -1,3 +1,4 @@
+import { useThemedStyles, useAppearance } from '@/features/appearance/appearance-provider';
 import type { ReactNode } from 'react';
 import { router, Stack } from 'expo-router';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -7,16 +8,17 @@ import { lifePilotColors as colors } from '@/constants/lifepilot-theme';
 export function VehicleHeader({ title, vehicleId, action }: {
   title: string; vehicleId?: number; action?: { label: string; onPress: () => void };
 }) {
+  const themed_styles = useThemedStyles(styles);
   return <Stack.Screen options={{ title, headerBackVisible: false,
     headerLeft: () => <Pressable accessibilityRole="button" accessibilityLabel="Go back"
-      onPress={() => router.canGoBack() ? router.back() : router.replace('/vehicle-manager')} style={styles.headerButton}>
-      <Text style={styles.headerIcon}>{'\u2190'}</Text>
+      onPress={() => router.canGoBack() ? router.back() : router.replace('/vehicle-manager')} style={themed_styles.headerButton}>
+      <Text style={themed_styles.headerIcon}>{'\u2190'}</Text>
     </Pressable>,
     headerRight: () => action ? <Pressable accessibilityRole="button" accessibilityLabel={action.label}
-      onPress={action.onPress} style={styles.headerButton}><Text style={styles.accent}>{action.label}</Text></Pressable>
-      : vehicleId ? <Pressable accessibilityRole="button" accessibilityLabel="Vehicle settings" style={styles.headerButton}
+      onPress={action.onPress} style={themed_styles.headerButton}><Text style={themed_styles.accent}>{action.label}</Text></Pressable>
+      : vehicleId ? <Pressable accessibilityRole="button" accessibilityLabel="Vehicle settings" style={themed_styles.headerButton}
         onPress={() => router.push({ pathname: '/vehicle/manage', params: { id: String(vehicleId) } })}>
-        <Text style={styles.headerIcon}>{'\u2699'}</Text></Pressable> : null,
+        <Text style={themed_styles.headerIcon}>{'\u2699'}</Text></Pressable> : null,
   }} />;
 }
 
@@ -24,15 +26,17 @@ export function VehiclePage({ title, vehicleId, action, loading, error, reload, 
   title: string; vehicleId?: number; action?: { label: string; onPress: () => void };
   loading?: boolean; error?: string | null; reload?: () => void; children?: ReactNode;
 }) {
-  return <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.screen}>
+  const themed_styles = useThemedStyles(styles);
+  const appearance = useAppearance();
+  return <SafeAreaView edges={['left', 'right', 'bottom']} style={themed_styles.screen}>
     <VehicleHeader title={title} vehicleId={vehicleId} action={action} />
-    <ScrollView contentContainerStyle={styles.content}>
-      {loading ? <ActivityIndicator accessibilityLabel="Loading vehicle" color={colors.green} />
-        : error ? <View style={styles.card}>
-          <Text accessibilityRole="alert" style={styles.body}>{error}</Text>
-          {reload && <Pressable accessibilityRole="button" onPress={reload} style={styles.button}><Text style={styles.accent}>Try again</Text></Pressable>}
-          <Pressable accessibilityRole="button" onPress={() => router.replace('/vehicle-manager')} style={styles.button}>
-            <Text style={styles.accent}>My Garage</Text></Pressable>
+    <ScrollView contentContainerStyle={themed_styles.content}>
+      {loading ? <ActivityIndicator accessibilityLabel="Loading vehicle" color={appearance.colors.green} />
+        : error ? <View style={themed_styles.card}>
+          <Text accessibilityRole="alert" style={themed_styles.body}>{error}</Text>
+          {reload && <Pressable accessibilityRole="button" onPress={reload} style={themed_styles.button}><Text style={themed_styles.accent}>Try again</Text></Pressable>}
+          <Pressable accessibilityRole="button" onPress={() => router.replace('/vehicle-manager')} style={themed_styles.button}>
+            <Text style={themed_styles.accent}>My Garage</Text></Pressable>
         </View> : children}
     </ScrollView>
   </SafeAreaView>;

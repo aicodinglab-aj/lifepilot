@@ -1,3 +1,4 @@
+import { useThemedStyles } from '@/features/appearance/appearance-provider';
 import { StyleSheet, Text, View, Pressable } from 'react-native';
 import { router } from 'expo-router';
 import { VehiclePhotoImage } from './vehicle-photo-image';
@@ -10,22 +11,23 @@ type VehicleCardProps = {
 };
 
 export function VehicleCard({ vehicle }: VehicleCardProps) {
+  const themed_styles = useThemedStyles(styles);
   return (
-    <Pressable style={styles.card} accessibilityRole="button" accessibilityLabel={`Open ${vehicle.make} ${vehicle.model}`} onPress={() => router.push({ pathname: '/vehicle/[id]', params: { id: String(vehicle.id) } })}>
+    <Pressable style={themed_styles.card} accessibilityRole="button" accessibilityLabel={`Open ${vehicle.make} ${vehicle.model}`} onPress={() => router.push({ pathname: '/vehicle/[id]', params: { id: String(vehicle.id) } })}>
       <VehiclePhotoImage vehicleId={vehicle.id} photoId={vehicle.coverPhotoId} uri={vehicle.coverPhotoUri} style={{ marginBottom: 16 }} />
-      <View style={styles.header}>
-        <View style={styles.iconBox}>
-          <Text style={styles.icon}>🚗</Text>
+      <View style={themed_styles.header}>
+        <View style={themed_styles.iconBox}>
+          <Text style={themed_styles.icon}>🚗</Text>
         </View>
-        <View style={styles.titleGroup}>
-          <Text style={styles.title}>
+        <View style={themed_styles.titleGroup}>
+          <Text style={themed_styles.title}>
             {vehicle.make} {vehicle.model}
           </Text>
-          <Text style={styles.registration}>{vehicle.registrationNumber}</Text>
+          <Text style={themed_styles.registration}>{vehicle.registrationNumber}</Text>
         </View>
       </View>
 
-      <View style={styles.details}>
+      <View style={themed_styles.details}>
         <Detail label="Type" value={vehicle.vehicleType} />
         <Detail label="Fuel" value={vehicle.fuelType} />
         <Detail label="Odometer" value={`${vehicle.odometerKm.toLocaleString()} km`} />
@@ -35,10 +37,11 @@ export function VehicleCard({ vehicle }: VehicleCardProps) {
 }
 
 function Detail({ label, value }: { label: string; value: string }) {
+  const themed_styles = useThemedStyles(styles);
   return (
-    <View style={styles.detail}>
-      <Text style={styles.detailLabel}>{label}</Text>
-      <Text style={styles.detailValue}>{value}</Text>
+    <View style={themed_styles.detail}>
+      <Text style={themed_styles.detailLabel}>{label}</Text>
+      <Text style={themed_styles.detailValue}>{value}</Text>
     </View>
   );
 }

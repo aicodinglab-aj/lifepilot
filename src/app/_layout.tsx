@@ -1,8 +1,9 @@
+import { AppearanceProvider, useThemedStyles, useAppearance } from '@/features/appearance/appearance-provider';
 import { useState } from 'react';
-import { DarkTheme, router, Stack, ThemeProvider } from 'expo-router';
+import { DarkTheme, DefaultTheme, router, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { SQLiteProvider } from 'expo-sqlite';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { lifePilotColors } from '@/constants/lifepilot-theme';
@@ -11,19 +12,26 @@ import { ReminderProvider } from '@/features/reminders/reminder-provider';
 
 SplashScreen.preventAutoHideAsync();
 
-export default function RootLayout() {
+// SQLiteProvider observes options by identity. Theme renders must not reopen the database.
+const databaseOptions = { enableChangeListener: true };
+
+export default function AppRoot() {
+  return <AppearanceProvider><RootLayout /></AppearanceProvider>;
+}
+function RootLayout() {
+  const themed_styles = useThemedStyles(styles);
   const [databaseError, setDatabaseError] = useState<string | null>(null);
 
   if (databaseError) {
     return (
-      <View style={styles.errorScreen}>
-        <Text style={styles.errorTitle}>Could not open LifePilot</Text>
-        <Text style={styles.errorText}>{databaseError}</Text>
+      <View style={themed_styles.errorScreen} onLayout={() => { SplashScreen.hide(); }}>
+        <Text style={themed_styles.errorTitle}>Could not open LifePilot</Text>
+        <Text style={themed_styles.errorText}>{databaseError}</Text>
         <Pressable
           accessibilityRole="button"
           onPress={() => setDatabaseError(null)}
-          style={styles.retryButton}>
-          <Text style={styles.retryText}>Try Again</Text>
+          style={themed_styles.retryButton}>
+          <Text style={themed_styles.retryText}>Try Again</Text>
         </Pressable>
       </View>
     );
@@ -32,17 +40,33 @@ export default function RootLayout() {
   return (
     <SQLiteProvider
       databaseName="lifepilot.db"
-      options={{ enableChangeListener: true }}
+      options={databaseOptions}
       onError={(error) => setDatabaseError(error.message)}
       onInit={migrateDatabase}>
-      <ThemeProvider value={DarkTheme}>
+      <ThemedNavigation />
+    </SQLiteProvider>
+  );
+}
+
+// Consume appearance inside SQLiteProvider's memo boundary so navigation updates
+// independently of database setup and without remounting the application tree.
+function ThemedNavigation() {
+  const themed_styles = useThemedStyles(styles);
+  const appearance = useAppearance();
+  const baseTheme = appearance.isDark ? DarkTheme : DefaultTheme;
+  const navigationTheme = { ...baseTheme, colors: { ...baseTheme.colors,
+    background: appearance.colors.background, card: appearance.colors.card,
+    text: appearance.colors.text, border: appearance.colors.border, primary: appearance.colors.primary } };
+  return (
+      <ThemeProvider value={navigationTheme}>
+        <StatusBar barStyle={appearance.isDark ? 'light-content' : 'dark-content'} backgroundColor={appearance.colors.background} />
         <ReminderProvider>
         <AnimatedSplashOverlay />
         <Stack
           screenOptions={{
-            contentStyle: { backgroundColor: lifePilotColors.background },
-            headerStyle: { backgroundColor: lifePilotColors.background },
-            headerTintColor: lifePilotColors.white,
+            contentStyle: { backgroundColor: appearance.colors.background },
+            headerStyle: { backgroundColor: appearance.colors.background },
+            headerTintColor: appearance.colors.white,
             headerShadowVisible: false,
           }}>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
@@ -55,8 +79,8 @@ export default function RootLayout() {
             headerLeft: () => (
               <Pressable accessibilityRole="button" accessibilityLabel="Go back"
                 onPress={() => router.back()}
-                style={({ pressed }) => [styles.photoBackButton, pressed && { opacity: 0.6 }]}>
-                <Text style={styles.photoBackIcon}>{'\u2190'}</Text>
+                style={({ pressed }) => [themed_styles.photoBackButton, pressed && { opacity: 0.6 }]}>
+                <Text style={themed_styles.photoBackIcon}>{'\u2190'}</Text>
               </Pressable>
             ),
           }} />
@@ -68,7 +92,6 @@ export default function RootLayout() {
         </Stack>
         </ReminderProvider>
       </ThemeProvider>
-    </SQLiteProvider>
   );
 }
 

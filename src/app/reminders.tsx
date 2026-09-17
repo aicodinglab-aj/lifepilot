@@ -1,3 +1,4 @@
+import { useThemedStyles } from '@/features/appearance/appearance-provider';
 import { useCallback, useState } from 'react';
 import { router, useFocusEffect } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
@@ -13,6 +14,7 @@ import { calendarDay, coverageDate } from '@/features/vehicles/coverage-status';
 import { useCoverageToday } from '@/features/vehicles/use-coverage';
 
 export default function RemindersScreen() {
+  const themed_styles = useThemedStyles(styles);
   const db = useSQLiteContext(), today = useCoverageToday();
   const runtime = useReminderRuntime();
   const [sources, setSources] = useState<ReminderSource[]>([]);
@@ -45,26 +47,26 @@ export default function RemindersScreen() {
     if (source.sourceType === 'service') router.push({ pathname: '/vehicle/service-details', params: { ...params, serviceId: source.recordId } });
     else router.push({ pathname: '/vehicle/coverage-details', params: { ...params, kind: source.sourceType, recordId: source.recordId } });
   }
-  return <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.screen}>
+  return <SafeAreaView edges={['left', 'right', 'bottom']} style={themed_styles.screen}>
     <VehicleHeader title="Vehicle Reminders" action={{ label: 'Settings', onPress: settings }} />
     <SectionList sections={[{ title: 'Upcoming', data: upcoming }, { title: 'Overdue / Expired', data: overdue }, { title: 'Service mileage', data: mileage }]}
-      keyExtractor={(source) => source.id} contentContainerStyle={styles.content} stickySectionHeadersEnabled={false}
-      ListHeaderComponent={<View style={styles.section}>
-        <Text style={styles.title}>Vehicle Reminders</Text>
-        <Text style={styles.body}>Due dates across your vehicles. Notification intervals affect alerts; records remain visible here.</Text>
+      keyExtractor={(source) => source.id} contentContainerStyle={themed_styles.content} stickySectionHeadersEnabled={false}
+      ListHeaderComponent={<View style={themed_styles.section}>
+        <Text style={themed_styles.title}>Vehicle Reminders</Text>
+        <Text style={themed_styles.body}>Due dates across your vehicles. Notification intervals affect alerts; records remain visible here.</Text>
         <ReminderNotificationStatus />
-        {!upcoming.length && <View style={styles.card}><Text style={styles.sectionTitle}>No upcoming date reminders</Text>
-          <Text style={styles.body}>Add Insurance, PUC or a next-service date to a vehicle.</Text></View>}
+        {!upcoming.length && <View style={themed_styles.card}><Text style={themed_styles.sectionTitle}>No upcoming date reminders</Text>
+          <Text style={themed_styles.body}>Add Insurance, PUC or a next-service date to a vehicle.</Text></View>}
       </View>}
-      renderSectionHeader={({ section }) => <Text style={styles.sectionTitle}>{section.title}</Text>}
-      renderSectionFooter={({ section }) => !section.data.length ? <Text style={styles.body}>None to show</Text> : null}
+      renderSectionHeader={({ section }) => <Text style={themed_styles.sectionTitle}>{section.title}</Text>}
+      renderSectionFooter={({ section }) => !section.data.length ? <Text style={themed_styles.body}>None to show</Text> : null}
       renderItem={({ item, section }) => {
         const miles = section.title === 'Service mileage' ? odometerStatus(item.odometer, item.dueOdometer, threshold) : null;
-        return <Pressable accessibilityRole="button" accessibilityLabel={`View ${reminderTitle(item.sourceType)} for ${item.registration}`} onPress={() => open(item)} style={styles.card}>
-          <Text style={styles.eyebrow}>{reminderTitle(item.sourceType)}</Text><Text style={styles.sectionTitle}>{item.registration}</Text>
-          <Text style={styles.accent}>{miles ? `${miles.state} · ${miles.message}` : dateReminderLabel(item, today)}</Text>
-          <Text style={styles.body}>{miles ? `Current: ${item.odometer.toLocaleString()} km · Next service: ${item.dueOdometer?.toLocaleString()} km` : coverageDate(item.dueDate)}</Text>
-          {miles && <Text style={styles.body}>Based on your last entered odometer. Update Vehicle Details after driving.</Text>}
+        return <Pressable accessibilityRole="button" accessibilityLabel={`View ${reminderTitle(item.sourceType)} for ${item.registration}`} onPress={() => open(item)} style={themed_styles.card}>
+          <Text style={themed_styles.eyebrow}>{reminderTitle(item.sourceType)}</Text><Text style={themed_styles.sectionTitle}>{item.registration}</Text>
+          <Text style={themed_styles.accent}>{miles ? `${miles.state} · ${miles.message}` : dateReminderLabel(item, today)}</Text>
+          <Text style={themed_styles.body}>{miles ? `Current: ${item.odometer.toLocaleString()} km · Next service: ${item.dueOdometer?.toLocaleString()} km` : coverageDate(item.dueDate)}</Text>
+          {miles && <Text style={themed_styles.body}>Based on your last entered odometer. Update Vehicle Details after driving.</Text>}
         </Pressable>;
       }}
       ListFooterComponent={<CoverageAction label="Reminder settings" onPress={settings} />} />

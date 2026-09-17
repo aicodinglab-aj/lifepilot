@@ -1,3 +1,4 @@
+import { useThemedStyles, useAppearance } from '@/features/appearance/appearance-provider';
 import { useRef, useState } from 'react';
 import { router } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
@@ -33,6 +34,8 @@ import {
 } from '@/features/vehicles/vehicle';
 
 export default function AddVehicleScreen() {
+  const themed_styles = useThemedStyles(styles);
+  const appearance = useAppearance();
   const db = useSQLiteContext();
   const [form, setForm] = useState<VehicleForm>(initialVehicleForm);
   const [errors, setErrors] = useState<VehicleFormErrors>({});
@@ -115,25 +118,25 @@ export default function AddVehicleScreen() {
   }
 
   return (
-    <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
+    <SafeAreaView edges={['left', 'right', 'bottom']} style={themed_styles.safeArea}>
+      <StatusBar barStyle={appearance.isDark ? 'light-content' : 'dark-content'} backgroundColor={appearance.colors.background} />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.keyboardView}>
+        style={themed_styles.keyboardView}>
         <ScrollView
-          contentContainerStyle={styles.content}
+          contentContainerStyle={themed_styles.content}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
           showsVerticalScrollIndicator={false}>
-          <View style={styles.heading}>
-            <Text style={styles.eyebrow}>MY GARAGE</Text>
-            <Text style={styles.title}>Add Vehicle</Text>
-            <Text style={styles.subtitle}>
+          <View style={themed_styles.heading}>
+            <Text style={themed_styles.eyebrow}>MY GARAGE</Text>
+            <Text style={themed_styles.title}>Add Vehicle</Text>
+            <Text style={themed_styles.subtitle}>
               Enter the basics now. You can add expenses and service details later.
             </Text>
           </View>
 
-          <View style={styles.form}>
+          <View style={themed_styles.form}>
             <OptionSelector
               error={errors.vehicleType}
               label="Vehicle type"
@@ -203,7 +206,7 @@ export default function AddVehicleScreen() {
             onPick={(camera) => { void selectPhotos(camera); }} onRemove={removePhoto}
             onCover={(id) => { if (!working.current && !created.current) setCoverId(id); }} />
 
-          {submitError && <Text style={styles.submitError}>{submitError}</Text>}
+          {submitError && <Text style={themed_styles.submitError}>{submitError}</Text>}
 
           <Pressable
             accessibilityRole="button"
@@ -211,11 +214,11 @@ export default function AddVehicleScreen() {
             disabled={isSaving || isPicking}
             onPress={handleSubmit}
             style={({ pressed }) => [
-              styles.saveButton,
-              pressed && styles.saveButtonPressed,
-              isSaving && styles.saveButtonDisabled,
+              themed_styles.saveButton,
+              pressed && themed_styles.saveButtonPressed,
+              isSaving && themed_styles.saveButtonDisabled,
             ]}>
-            <Text style={styles.saveButtonText}>{isSaving ? 'Saving…' : 'Save Vehicle'}</Text>
+            <Text style={themed_styles.saveButtonText}>{isSaving ? 'Saving…' : 'Save Vehicle'}</Text>
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>

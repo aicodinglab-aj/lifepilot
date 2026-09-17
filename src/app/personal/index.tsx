@@ -1,3 +1,4 @@
+import { useThemedStyles } from '@/features/appearance/appearance-provider';
 import { useCallback, useEffect, useState } from 'react';
 import { router } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
@@ -12,6 +13,7 @@ import { usePersonalQuery } from '@/features/personal/use-personal-query';
 export { PersonalErrorBoundary as ErrorBoundary } from '@/components/personal/error-boundary';
 
 export default function PersonalDashboard() {
+  const themed_styles = useThemedStyles(styles);
   const db = useSQLiteContext();
   const [currentMonth, setCurrentMonth] = useState(localToday().slice(0, 7));
   const [selection, setSelection] = useState<string | null>(null);
@@ -30,25 +32,25 @@ export default function PersonalDashboard() {
   const previous = shiftMonth(month, -1), next = shiftMonth(month, 1);
   return <PersonalPage title="Personal Expenses" {...state} loading={state.loading || (!state.error && state.data?.analytics.selected.month !== month)}>
     {state.data && <>
-      <Text style={styles.title}>Personal Expenses</Text>
-      <Text style={styles.heading}>{monthLabel(month)}</Text>
+      <Text style={themed_styles.title}>Personal Expenses</Text>
+      <Text style={themed_styles.heading}>{monthLabel(month)}</Text>
       <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
         <Action label="← Previous month" disabled={!previous} onPress={() => setSelection(previous)} />
         <Action label="Next month →" disabled={!next} onPress={() => setSelection(next)} />
       </View>
       <Action label="Current month" onPress={() => { setSelection(null); setCurrentMonth(localToday().slice(0, 7)); }} />
-      <View style={styles.card}>
-        <Text style={styles.body}>Income · {state.data.analytics.selected.incomeCount} transactions</Text>
-        <Text style={styles.amount}>{formatMoney(state.data.analytics.selected.income)}</Text>
-        <Text style={styles.body}>Expenses · {state.data.analytics.selected.expenseCount} transactions</Text>
-        <Text style={styles.amount}>{formatMoney(state.data.analytics.selected.expenses)}</Text>
-        <Text style={styles.body}>Balance</Text><Text style={styles.amount}>{formatMoney(state.data.analytics.selected.balance)}</Text>
+      <View style={themed_styles.card}>
+        <Text style={themed_styles.body}>Income · {state.data.analytics.selected.incomeCount} transactions</Text>
+        <Text style={themed_styles.amount}>{formatMoney(state.data.analytics.selected.income)}</Text>
+        <Text style={themed_styles.body}>Expenses · {state.data.analytics.selected.expenseCount} transactions</Text>
+        <Text style={themed_styles.amount}>{formatMoney(state.data.analytics.selected.expenses)}</Text>
+        <Text style={themed_styles.body}>Balance</Text><Text style={themed_styles.amount}>{formatMoney(state.data.analytics.selected.balance)}</Text>
       </View>
       <Action label="Add Transaction" onPress={() => router.push('/personal/edit')} />
       <AnalyticsSections data={state.data.analytics} />
-      <Text style={styles.heading}>Recent Transactions · Selected month</Text>
+      <Text style={themed_styles.heading}>Recent Transactions · Selected month</Text>
       {state.data.recent.rows.length ? state.data.recent.rows.map((item) => <TransactionCard key={item.id} transaction={item} />)
-        : <View style={styles.card}><Text style={styles.heading}>No transactions this month</Text><Text style={styles.body}>Choose another month or add a personal transaction.</Text></View>}
+        : <View style={themed_styles.card}><Text style={themed_styles.heading}>No transactions this month</Text><Text style={themed_styles.body}>Choose another month or add a personal transaction.</Text></View>}
       <Action label="View All Transactions" onPress={() => router.push('/personal/history')} />
     </>}
   </PersonalPage>;

@@ -1,3 +1,4 @@
+import { useThemedStyles, useAppearance, useThemeColor } from '@/features/appearance/appearance-provider';
 import { useCallback, useState } from 'react';
 import { router, Stack, useFocusEffect } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
@@ -27,6 +28,9 @@ function returnHome() {
 }
 
 export default function VehicleManagerScreen() {
+  const themed_styles = useThemedStyles(styles);
+  const appearance = useAppearance();
+  const themedColor = useThemeColor();
   const db = useSQLiteContext();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -66,7 +70,7 @@ export default function VehicleManagerScreen() {
   );
 
   return (
-    <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.safeArea}>
+    <SafeAreaView edges={['left', 'right', 'bottom']} style={themed_styles.safeArea}>
       <Stack.Screen options={{
         headerBackVisible: false,
         headerLeft: () => (
@@ -74,59 +78,59 @@ export default function VehicleManagerScreen() {
             accessibilityRole="button"
             accessibilityLabel="Back to Home"
             onPress={returnHome}
-            style={({ pressed }) => [styles.backButton, pressed && styles.backButtonPressed]}>
+            style={({ pressed }) => [themed_styles.backButton, pressed && themed_styles.backButtonPressed]}>
             <SymbolView
               name={{ ios: 'arrow.left', android: 'arrow_back', web: 'arrow_back' }}
-              tintColor={colors.green}
+              tintColor={appearance.colors.green}
               size={26}
             />
           </Pressable>
         ),
       }} />
-      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
+      <StatusBar barStyle={appearance.isDark ? 'light-content' : 'dark-content'} backgroundColor={appearance.colors.background} />
 
-      <View style={styles.container}>
-        <View style={styles.heading}>
-          <Text style={styles.eyebrow}>VEHICLE MANAGER</Text>
-          <Text style={styles.title}>My Garage</Text>
-          <Text style={styles.subtitle}>Keep each vehicle and its costs organized in one place.</Text>
-          <Pressable accessibilityRole="button" onPress={() => router.push('/reminders')} style={styles.retryButton}>
-            <Text style={styles.retryText}>Vehicle Reminders</Text>
+      <View style={themed_styles.container}>
+        <View style={themed_styles.heading}>
+          <Text style={themed_styles.eyebrow}>VEHICLE MANAGER</Text>
+          <Text style={themed_styles.title}>My Garage</Text>
+          <Text style={themed_styles.subtitle}>Keep each vehicle and its costs organized in one place.</Text>
+          <Pressable accessibilityRole="button" onPress={() => router.push('/reminders')} style={themed_styles.retryButton}>
+            <Text style={themed_styles.retryText}>Vehicle Reminders</Text>
           </Pressable>
         </View>
 
         {cleanupError && <View style={{ marginBottom: 16, gap: 8 }}>
-          <Text accessibilityRole="alert" style={{ color: '#FF8585' }}>{cleanupError}</Text>
-          <Pressable accessibilityRole="button" disabled={isLoading} onPress={loadGarage} style={styles.retryButton}>
-            <Text style={styles.retryText}>Retry cleanup</Text>
+          <Text accessibilityRole="alert" style={{ color: themedColor('#FF8585') }}>{cleanupError}</Text>
+          <Pressable accessibilityRole="button" disabled={isLoading} onPress={loadGarage} style={themed_styles.retryButton}>
+            <Text style={themed_styles.retryText}>Retry cleanup</Text>
           </Pressable>
         </View>}
         {isLoading ? (
-          <View style={styles.centerState}>
-            <ActivityIndicator color={colors.green} size="large" />
-            <Text style={styles.stateText}>Loading your garage…</Text>
+          <View style={themed_styles.centerState}>
+            <ActivityIndicator color={appearance.colors.green} size="large" />
+            <Text style={themed_styles.stateText}>Loading your garage…</Text>
           </View>
         ) : loadError ? (
-          <View style={styles.centerState}>
-            <Text style={styles.errorTitle}>Garage unavailable</Text>
-            <Text style={styles.emptyText}>{loadError}</Text>
-            <Pressable accessibilityRole="button" onPress={loadGarage} style={styles.retryButton}>
-              <Text style={styles.retryText}>Try Again</Text>
+          <View style={themed_styles.centerState}>
+            <Text style={themed_styles.errorTitle}>Garage unavailable</Text>
+            <Text style={themed_styles.emptyText}>{loadError}</Text>
+            <Pressable accessibilityRole="button" onPress={loadGarage} style={themed_styles.retryButton}>
+              <Text style={themed_styles.retryText}>Try Again</Text>
             </Pressable>
           </View>
         ) : vehicles.length === 0 ? (
-          <View style={styles.centerState}>
-            <View style={styles.iconBox}>
-              <Text style={styles.icon}>🚗</Text>
+          <View style={themed_styles.centerState}>
+            <View style={themed_styles.iconBox}>
+              <Text style={themed_styles.icon}>🚗</Text>
             </View>
-            <Text style={styles.emptyTitle}>Your garage is empty</Text>
-            <Text style={styles.emptyText}>
+            <Text style={themed_styles.emptyTitle}>Your garage is empty</Text>
+            <Text style={themed_styles.emptyText}>
               Add your first vehicle when you are ready to start managing it.
             </Text>
           </View>
         ) : (
           <ScrollView
-            contentContainerStyle={styles.vehicleList}
+            contentContainerStyle={themed_styles.vehicleList}
             showsVerticalScrollIndicator={false}>
             {vehicles.map((vehicle) => (
               <VehicleCard key={vehicle.id} vehicle={vehicle} />
@@ -137,8 +141,8 @@ export default function VehicleManagerScreen() {
         <Pressable
           accessibilityRole="button"
           onPress={() => router.push('/add-vehicle')}
-          style={({ pressed }) => [styles.addButton, pressed && styles.addButtonPressed]}>
-          <Text style={styles.addButtonText}>Add Vehicle</Text>
+          style={({ pressed }) => [themed_styles.addButton, pressed && themed_styles.addButtonPressed]}>
+          <Text style={themed_styles.addButtonText}>Add Vehicle</Text>
         </Pressable>
       </View>
     </SafeAreaView>
