@@ -20,3 +20,20 @@ export function displayDate(value: string): string {
   const [year, month, day] = value.split('-').map(Number);
   return `${day} ${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][month - 1]} ${year}`;
 }
+
+export function shiftMonth(month: string, offset: number): string | null {
+  monthRange(month);
+  if (!Number.isInteger(offset)) throw new Error('Invalid month offset.');
+  const [year, number] = month.split('-').map(Number);
+  const index = (year - 1) * 12 + number - 1 + offset;
+  if (index < 0 || index >= 9999 * 12) return null;
+  return `${String(Math.floor(index / 12) + 1).padStart(4, '0')}-${String(index % 12 + 1).padStart(2, '0')}`;
+}
+export function monthLabel(month: string): string {
+  monthRange(month);
+  const [year, number] = month.split('-').map(Number);
+  return `${['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][number - 1]} ${year}`;
+}
+export function trendMonths(month: string): string[] {
+  return [-5, -4, -3, -2, -1, 0].map((offset) => shiftMonth(month, offset)).filter((value): value is string => value !== null);
+}

@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { Alert, FlatList, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -14,9 +14,19 @@ export { PersonalErrorBoundary as ErrorBoundary } from '@/components/personal/er
 
 type Cursor = Pick<Transaction, 'id' | 'transactionDate'> | undefined;
 export default function TransactionHistory() {
+  const params = useLocalSearchParams<{ month?: string; type?: string; categoryId?: string }>();
+  const initialFilter: HistoryFilter = {};
+  if (typeof params.month === 'string') {
+    try { monthRange(params.month); initialFilter.month = params.month; } catch { /* Ignore malformed external route filters. */ }
+  }
+  if (params.type === 'income' || params.type === 'expense') initialFilter.type = params.type;
+  if (typeof params.categoryId === 'string' && params.categoryId.length <= 200) initialFilter.categoryId = params.categoryId;
+  return <History key={JSON.stringify(initialFilter)} initialFilter={initialFilter} />;
+}
+function History({ initialFilter }: { initialFilter: HistoryFilter }) {
   const db = useSQLiteContext();
-  const [filter, setFilter] = useState<HistoryFilter>({});
-  const [month, setMonth] = useState(localToday().slice(0, 7));
+  const [filter, setFilter] = useState<HistoryFilter>(initialFilter);
+  const [month, setMonth] = useState(initialFilter.month ?? localToday().slice(0, 7));
   const [pages, setPages] = useState<Cursor[]>([undefined]);
   const cursor = pages[pages.length - 1];
   const state = usePersonalQuery(useCallback(() => getTransactions(db, filter, cursor), [db, filter, cursor]));
@@ -31,7 +41,9 @@ export default function TransactionHistory() {
         <Action label="Add Transaction" onPress={() => router.push('/personal/edit')} />
         <OptionSelector label="Transaction type" options={['All', 'Expenses', 'Income']}
           value={filter.type === 'expense' ? 'Expenses' : filter.type === 'income' ? 'Income' : 'All'}
-          onChange={(value) => changeFilter({ ...filter, type: value === 'Expenses' ? 'expense' : value === 'Income' ? 'income' : undefined })} />
+          onChange={(value) => changeFilter({ ...filter, categoryId: undefined, type: value === 'Expenses' ? 'expense' : value === 'Income' ? 'income' : undefined })} />
+        {filter.categoryId && <><Text style={styles.body}>Showing the selected category</Text>
+          <Action label="Clear category filter" onPress={() => changeFilter({ ...filter, categoryId: undefined })} /></>}
         <FormTextField label="Month (YYYY-MM)" value={month} onChangeText={setMonth} placeholder="YYYY-MM" maxLength={7} />
         <Action label="Apply month" onPress={() => {
           try { monthRange(month); changeFilter({ ...filter, month }); }

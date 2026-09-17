@@ -1,4 +1,5 @@
 import { router } from 'expo-router';
+import { SymbolView } from 'expo-symbols';
 import { Pressable, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
 
 import { lifePilotColors as colors } from '@/constants/lifepilot-theme';
@@ -35,6 +36,9 @@ export default function HomeScreen() {
       <View style={styles.cards}>
         <Pressable accessibilityRole="button" onPress={() => router.push('/reminders')}
           style={({ pressed }) => [styles.card, { minHeight: 72 }, pressed && styles.cardPressed]}>
+          <View style={styles.iconBox}>
+            <SymbolView name={{ ios: 'bell', android: 'notifications', web: 'notifications' }} size={26} tintColor={colors.green} />
+          </View>
           <View style={styles.cardContent}><Text style={styles.cardTitle}>Vehicle Reminders</Text>
             <Text style={styles.cardText}>Insurance, PUC and service due dates.</Text></View>
           <Text style={styles.arrow}>›</Text>
@@ -63,7 +67,7 @@ export default function HomeScreen() {
           onPress={() => router.push('/personal')}
           style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}>
           <View style={styles.iconBox}>
-            <Text style={styles.icon}>▣</Text>
+            <SymbolView name={{ ios: 'wallet.pass', android: 'account_balance_wallet', web: 'account_balance_wallet' }} size={26} tintColor={colors.green} />
           </View>
 
           <View style={styles.cardContent}>
@@ -72,7 +76,7 @@ export default function HomeScreen() {
               Personal expenses, income, categories and transaction history.
             </Text>
           </View>
-
+          <Text style={styles.arrow}>›</Text>
         </Pressable>
       </View>
     </ScrollView>
@@ -142,6 +146,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   iconBox: {
+    flexShrink: 0,
     width: 54,
     height: 54,
     borderRadius: 16,
@@ -156,6 +161,7 @@ const styles = StyleSheet.create({
   },
   cardContent: {
     flex: 1,
+    minWidth: 0,
   },
   cardTitle: {
     color: colors.white,
@@ -169,6 +175,7 @@ const styles = StyleSheet.create({
     lineHeight: 19,
   },
   arrow: {
+    flexShrink: 0,
     color: colors.green,
     fontSize: 32,
     marginLeft: 8,

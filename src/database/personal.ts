@@ -41,7 +41,7 @@ export async function deleteTransaction(db: SQLiteDatabase, id: number) {
   const result = await db.runAsync('DELETE FROM personal_transactions WHERE id = ?', [id]);
   if (result.changes !== 1) throw new Error('This transaction no longer exists.');
 }
-export type HistoryFilter = { type?: TransactionType; month?: string };
+export type HistoryFilter = { type?: TransactionType; month?: string; categoryId?: string };
 export async function getTransactions(db: SQLiteDatabase, filter: HistoryFilter = {}, cursor?: Pick<Transaction, 'transactionDate' | 'id'>, limit = PERSONAL_PAGE_SIZE) {
   if (!Number.isInteger(limit) || limit < 1 || limit > PERSONAL_PAGE_SIZE) throw new Error('Invalid page size.');
   const where: string[] = [], params: (string | number)[] = [];
@@ -53,6 +53,7 @@ export async function getTransactions(db: SQLiteDatabase, filter: HistoryFilter 
     const range = monthRange(filter.month);
     where.push('t.transaction_date BETWEEN ? AND ?'); params.push(range.start, range.end);
   }
+  if (filter.categoryId) { where.push('t.category_id = ?'); params.push(filter.categoryId); }
   if (cursor) { where.push('(t.transaction_date, t.id) < (?, ?)'); params.push(cursor.transactionDate, cursor.id); }
   const rows = await db.getAllAsync<Transaction>(`SELECT ${columns} FROM ${joined}
     ${where.length ? `WHERE ${where.join(' AND ')}` : ''} ORDER BY t.transaction_date DESC, t.id DESC LIMIT ?`, [...params, limit + 1]);
