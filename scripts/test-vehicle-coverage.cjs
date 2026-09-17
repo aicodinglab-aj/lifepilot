@@ -56,11 +56,11 @@ async function main() {
   const preservedTables = ['vehicles', 'vehicle_photos', 'vehicle_services', 'service_bill_photos', 'service_bill_cleanup', 'personal_expenses'];
   const before = Object.fromEntries(preservedTables.map((table) => [table, snapshot(table)]));
   await migration.migrateDatabase(db); await migration.migrateDatabase(db);
-  assert.equal(raw.prepare('PRAGMA user_version').get().user_version, 6);
+  assert.equal(raw.prepare('PRAGMA user_version').get().user_version, 7);
   for (const table of preservedTables) assert.equal(snapshot(table), before[table]);
   const fresh = database(':memory:'); await migration.migrateDatabase(fresh.db);
-  assert.equal(fresh.raw.prepare('PRAGMA user_version').get().user_version, 6);
-  fresh.raw.exec('PRAGMA user_version = 7'); await assert.rejects(() => migration.migrateDatabase(fresh.db)); fresh.raw.close();
+  assert.equal(fresh.raw.prepare('PRAGMA user_version').get().user_version, 7);
+  fresh.raw.exec('PRAGMA user_version = 8'); await assert.rejects(() => migration.migrateDatabase(fresh.db)); fresh.raw.close();
   // A failed additive migration rolls back entirely and retains the old version/data.
   const failedMigration = database(':memory:');
   for (const step of migrations.slice(0, 5)) failedMigration.raw.exec(step[1]);

@@ -7,6 +7,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { lifePilotColors } from '@/constants/lifepilot-theme';
 import { migrateDatabase } from '@/database/migrate';
+import { ReminderProvider } from '@/features/reminders/reminder-provider';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -31,9 +32,11 @@ export default function RootLayout() {
   return (
     <SQLiteProvider
       databaseName="lifepilot.db"
+      options={{ enableChangeListener: true }}
       onError={(error) => setDatabaseError(error.message)}
       onInit={migrateDatabase}>
       <ThemeProvider value={DarkTheme}>
+        <ReminderProvider>
         <AnimatedSplashOverlay />
         <Stack
           screenOptions={{
@@ -63,6 +66,7 @@ export default function RootLayout() {
           <Stack.Screen name="vehicle/photos" options={{ title: 'Documents & Photos' }} />
           <Stack.Screen name="vehicle/module" options={{ title: 'My Vehicle' }} />
         </Stack>
+        </ReminderProvider>
       </ThemeProvider>
     </SQLiteProvider>
   );

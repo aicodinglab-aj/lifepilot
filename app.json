@@ -35,6 +35,7 @@
         }
       ],
       "expo-sqlite",
+      ["expo-notifications", { "defaultChannel": "vehicle-reminders", "color": "#5BE49B" }],
       [
         "expo-image-picker",
         {

@@ -1,6 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-const DATABASE_VERSION = 6;
+const DATABASE_VERSION = 7;
 
 export async function migrateDatabase(db: SQLiteDatabase) {
   await db.execAsync('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;');
@@ -210,6 +210,143 @@ export async function migrateDatabase(db: SQLiteDatabase) {
           VALUES ('puc', OLD.vehicle_id, OLD.record_id, OLD.id, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
         END;
         PRAGMA user_version = 6;
+      `);
+    });
+  }
+  if (currentVersion < 7) {
+    await db.withTransactionAsync(async () => {
+      await db.execAsync(`
+        CREATE TABLE reminder_preferences (
+          id INTEGER PRIMARY KEY CHECK (id = 1),
+          notifications_enabled INTEGER NOT NULL DEFAULT 1 CHECK (notifications_enabled IN (0,1)),
+          permission_requested INTEGER NOT NULL DEFAULT 0 CHECK (permission_requested IN (0,1)),
+          mileage_threshold REAL NOT NULL DEFAULT 500 CHECK (mileage_threshold >= 0),
+          updated_at TEXT NOT NULL
+        );
+        INSERT INTO reminder_preferences(id, updated_at) VALUES (1, strftime('%Y-%m-%dT%H:%M:%fZ','now'));
+        CREATE TABLE reminder_intervals (
+          source_type TEXT NOT NULL CHECK (source_type IN ('insurance','puc','service')),
+          offset_days INTEGER NOT NULL CHECK (offset_days >= 0),
+          enabled INTEGER NOT NULL DEFAULT 1 CHECK (enabled IN (0,1)),
+          updated_at TEXT NOT NULL,
+          PRIMARY KEY (source_type, offset_days)
+        );
+        INSERT INTO reminder_intervals(source_type, offset_days, updated_at)
+          SELECT source_type, offset_days, strftime('%Y-%m-%dT%H:%M:%fZ','now')
+          FROM (SELECT 'insurance' AS source_type UNION ALL SELECT 'puc' UNION ALL SELECT 'service')
+          CROSS JOIN (SELECT 30 AS offset_days UNION ALL SELECT 7 UNION ALL SELECT 1 UNION ALL SELECT 0);
+        CREATE TABLE reminder_change_state (id INTEGER PRIMARY KEY CHECK (id = 1), revision INTEGER NOT NULL DEFAULT 0);
+        INSERT INTO reminder_change_state VALUES (1, 0);
+        CREATE TABLE vehicle_reminder_sources (
+          id TEXT PRIMARY KEY NOT NULL,
+          vehicle_id INTEGER NOT NULL REFERENCES vehicles(id) ON DELETE CASCADE,
+          source_type TEXT NOT NULL CHECK (source_type IN ('insurance','puc','service')),
+          insurance_id TEXT UNIQUE,
+          puc_id TEXT UNIQUE,
+          service_id TEXT UNIQUE,
+          FOREIGN KEY (vehicle_id, insurance_id) REFERENCES vehicle_insurance(vehicle_id,id) ON DELETE CASCADE,
+          FOREIGN KEY (vehicle_id, puc_id) REFERENCES vehicle_puc(vehicle_id,id) ON DELETE CASCADE,
+          FOREIGN KEY (vehicle_id, service_id) REFERENCES vehicle_services(vehicle_id,id) ON DELETE CASCADE,
+          CHECK ((source_type = 'insurance' AND insurance_id IS NOT NULL AND puc_id IS NULL AND service_id IS NULL)
+            OR (source_type = 'puc' AND puc_id IS NOT NULL AND insurance_id IS NULL AND service_id IS NULL)
+            OR (source_type = 'service' AND service_id IS NOT NULL AND insurance_id IS NULL AND puc_id IS NULL)),
+          UNIQUE (id, source_type)
+        );
+        CREATE INDEX reminder_sources_vehicle ON vehicle_reminder_sources(vehicle_id, source_type);
+        CREATE TABLE vehicle_reminder_schedule (
+          notification_id TEXT PRIMARY KEY NOT NULL,
+          source_id TEXT NOT NULL,
+          source_type TEXT NOT NULL,
+          due_date TEXT NOT NULL,
+          offset_days INTEGER NOT NULL,
+          fire_at INTEGER NOT NULL,
+          fingerprint TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          FOREIGN KEY (source_id, source_type) REFERENCES vehicle_reminder_sources(id, source_type) ON DELETE CASCADE,
+          FOREIGN KEY (source_type, offset_days) REFERENCES reminder_intervals(source_type, offset_days) ON DELETE CASCADE,
+          UNIQUE (source_id, offset_days)
+        );
+        CREATE INDEX reminder_schedule_source ON vehicle_reminder_schedule(source_id);
+        CREATE INDEX reminder_schedule_fire ON vehicle_reminder_schedule(fire_at);
+        -- Cancellation survives source/vehicle deletion and native scheduling failures.
+        CREATE TABLE reminder_notification_cleanup (notification_id TEXT PRIMARY KEY NOT NULL, created_at TEXT NOT NULL);
+        CREATE TRIGGER reminder_schedule_deleted AFTER DELETE ON vehicle_reminder_schedule BEGIN
+          INSERT OR IGNORE INTO reminder_notification_cleanup VALUES (OLD.notification_id, strftime('%Y-%m-%dT%H:%M:%fZ','now'));
+        END;
+        INSERT INTO vehicle_reminder_sources(id, vehicle_id, source_type, insurance_id)
+          SELECT 'insurance:' || vehicle_id || ':' || id, vehicle_id, 'insurance', id FROM vehicle_insurance;
+        CREATE TRIGGER reminder_insurance_insert AFTER INSERT ON vehicle_insurance BEGIN
+          INSERT INTO vehicle_reminder_sources(id, vehicle_id, source_type, insurance_id)
+            VALUES ('insurance:' || NEW.vehicle_id || ':' || NEW.id, NEW.vehicle_id, 'insurance', NEW.id);
+          UPDATE reminder_change_state SET revision = revision + 1 WHERE id = 1;
+        END;
+        CREATE TRIGGER reminder_insurance_update AFTER UPDATE ON vehicle_insurance BEGIN
+          DELETE FROM vehicle_reminder_schedule WHERE source_id = 'insurance:' || OLD.vehicle_id || ':' || OLD.id;
+          UPDATE reminder_change_state SET revision = revision + 1 WHERE id = 1;
+        END;
+        CREATE TRIGGER reminder_insurance_delete AFTER DELETE ON vehicle_insurance BEGIN
+          DELETE FROM vehicle_reminder_sources WHERE id = 'insurance:' || OLD.vehicle_id || ':' || OLD.id;
+          UPDATE reminder_change_state SET revision = revision + 1 WHERE id = 1;
+        END;
+        INSERT INTO vehicle_reminder_sources(id, vehicle_id, source_type, puc_id)
+          SELECT 'puc:' || vehicle_id || ':' || id, vehicle_id, 'puc', id FROM vehicle_puc;
+        CREATE TRIGGER reminder_puc_insert AFTER INSERT ON vehicle_puc BEGIN
+          INSERT INTO vehicle_reminder_sources(id, vehicle_id, source_type, puc_id)
+            VALUES ('puc:' || NEW.vehicle_id || ':' || NEW.id, NEW.vehicle_id, 'puc', NEW.id);
+          UPDATE reminder_change_state SET revision = revision + 1 WHERE id = 1;
+        END;
+        CREATE TRIGGER reminder_puc_update AFTER UPDATE ON vehicle_puc BEGIN
+          DELETE FROM vehicle_reminder_schedule WHERE source_id = 'puc:' || OLD.vehicle_id || ':' || OLD.id;
+          UPDATE reminder_change_state SET revision = revision + 1 WHERE id = 1;
+        END;
+        CREATE TRIGGER reminder_puc_delete AFTER DELETE ON vehicle_puc BEGIN
+          DELETE FROM vehicle_reminder_sources WHERE id = 'puc:' || OLD.vehicle_id || ':' || OLD.id;
+          UPDATE reminder_change_state SET revision = revision + 1 WHERE id = 1;
+        END;
+        INSERT INTO vehicle_reminder_sources(id, vehicle_id, source_type, service_id)
+          SELECT 'service:' || vehicle_id || ':' || id, vehicle_id, 'service', id FROM vehicle_services;
+        CREATE TRIGGER reminder_service_insert AFTER INSERT ON vehicle_services BEGIN
+          INSERT INTO vehicle_reminder_sources(id, vehicle_id, source_type, service_id)
+            VALUES ('service:' || NEW.vehicle_id || ':' || NEW.id, NEW.vehicle_id, 'service', NEW.id);
+          UPDATE reminder_change_state SET revision = revision + 1 WHERE id = 1;
+        END;
+        CREATE TRIGGER reminder_service_update AFTER UPDATE ON vehicle_services BEGIN
+          DELETE FROM vehicle_reminder_schedule WHERE source_id = 'service:' || OLD.vehicle_id || ':' || OLD.id;
+          UPDATE reminder_change_state SET revision = revision + 1 WHERE id = 1;
+        END;
+        CREATE TRIGGER reminder_service_delete AFTER DELETE ON vehicle_services BEGIN
+          DELETE FROM vehicle_reminder_sources WHERE id = 'service:' || OLD.vehicle_id || ':' || OLD.id;
+          UPDATE reminder_change_state SET revision = revision + 1 WHERE id = 1;
+        END;
+        CREATE TRIGGER reminder_vehicles_insert AFTER INSERT ON vehicles BEGIN
+          UPDATE reminder_change_state SET revision = revision + 1 WHERE id = 1;
+        END;
+        CREATE TRIGGER reminder_vehicles_update AFTER UPDATE ON vehicles BEGIN
+          UPDATE reminder_change_state SET revision = revision + 1 WHERE id = 1;
+        END;
+        CREATE TRIGGER reminder_vehicles_delete AFTER DELETE ON vehicles BEGIN
+          UPDATE reminder_change_state SET revision = revision + 1 WHERE id = 1;
+        END;
+        CREATE TRIGGER reminder_reminder_intervals_insert AFTER INSERT ON reminder_intervals BEGIN
+          UPDATE reminder_change_state SET revision = revision + 1 WHERE id = 1;
+        END;
+        CREATE TRIGGER reminder_reminder_intervals_update AFTER UPDATE ON reminder_intervals BEGIN
+          UPDATE reminder_change_state SET revision = revision + 1 WHERE id = 1;
+        END;
+        CREATE TRIGGER reminder_reminder_intervals_delete AFTER DELETE ON reminder_intervals BEGIN
+          UPDATE reminder_change_state SET revision = revision + 1 WHERE id = 1;
+        END;
+        CREATE TRIGGER reminder_reminder_preferences_insert AFTER INSERT ON reminder_preferences BEGIN
+          UPDATE reminder_change_state SET revision = revision + 1 WHERE id = 1;
+        END;
+        CREATE TRIGGER reminder_reminder_preferences_update AFTER UPDATE ON reminder_preferences BEGIN
+          UPDATE reminder_change_state SET revision = revision + 1 WHERE id = 1;
+        END;
+        CREATE TRIGGER reminder_reminder_preferences_delete AFTER DELETE ON reminder_preferences BEGIN
+          UPDATE reminder_change_state SET revision = revision + 1 WHERE id = 1;
+        END;
+        PRAGMA user_version = 7;
       `);
     });
   }

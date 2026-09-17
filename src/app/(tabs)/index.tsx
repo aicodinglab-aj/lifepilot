@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
 
 import { lifePilotColors as colors } from '@/constants/lifepilot-theme';
 
@@ -12,7 +12,7 @@ export default function HomeScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={{ backgroundColor: colors.background }} contentContainerStyle={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={colors.background} />
 
       <View style={styles.header}>
@@ -33,6 +33,12 @@ export default function HomeScreen() {
       </View>
 
       <View style={styles.cards}>
+        <Pressable accessibilityRole="button" onPress={() => router.push('/reminders')}
+          style={({ pressed }) => [styles.card, { minHeight: 72 }, pressed && styles.cardPressed]}>
+          <View style={styles.cardContent}><Text style={styles.cardTitle}>Vehicle Reminders</Text>
+            <Text style={styles.cardText}>Insurance, PUC and service due dates.</Text></View>
+          <Text style={styles.arrow}>›</Text>
+        </Pressable>
         <Pressable
           accessibilityRole="button"
           onPress={openVehicleManager}
@@ -71,15 +77,16 @@ export default function HomeScreen() {
 
         </Pressable>
       </View>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    flexGrow: 1,
     backgroundColor: colors.background,
     paddingHorizontal: 24,
+    paddingVertical: 24,
     justifyContent: 'center',
   },
   header: {

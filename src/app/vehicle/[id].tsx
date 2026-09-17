@@ -7,6 +7,7 @@ import { useVehicle } from '@/features/vehicles/use-vehicle';
 import { vehicleModules } from '@/features/vehicles/vehicle-modules';
 import { useCoverageSummary } from '@/features/vehicles/use-coverage';
 import { coverageStatus } from '@/features/vehicles/coverage-status';
+import { VehicleMileageReminder } from '@/components/vehicles/mileage-reminder';
 
 export default function VehicleOverviewScreen() {
   const state = useVehicle();
@@ -41,6 +42,7 @@ export default function VehicleOverviewScreen() {
           <Status label="Insurance" value={status('insurance')} />
           <Status label="PUC / Pollution" value={status('puc')} />
         </View>
+        <VehicleMileageReminder vehicleId={vehicleId} odometer={vehicle.odometerKm} />
       </View>
       <View style={styles.section}>
         <Text style={shared.sectionTitle}>Manage your vehicle</Text>

@@ -10,11 +10,13 @@
     },
     "preview": {
       "distribution": "internal",
+      "env": { "EXPO_PUBLIC_APP_VARIANT": "preview" },
       "android": {
         "buildType": "apk"
       }
     },
     "production": {
+      "env": { "EXPO_PUBLIC_APP_VARIANT": "production" },
       "autoIncrement": true
     }
   },

@@ -90,6 +90,9 @@ export default function VehicleManagerScreen() {
           <Text style={styles.eyebrow}>VEHICLE MANAGER</Text>
           <Text style={styles.title}>My Garage</Text>
           <Text style={styles.subtitle}>Keep each vehicle and its costs organized in one place.</Text>
+          <Pressable accessibilityRole="button" onPress={() => router.push('/reminders')} style={styles.retryButton}>
+            <Text style={styles.retryText}>Vehicle Reminders</Text>
+          </Pressable>
         </View>
 
         {cleanupError && <View style={{ marginBottom: 16, gap: 8 }}>
