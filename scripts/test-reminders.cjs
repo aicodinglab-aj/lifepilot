@@ -132,12 +132,12 @@ async function main() {
   const preserved = ['vehicles', 'vehicle_photos', 'vehicle_services', 'service_bill_photos', 'vehicle_insurance', 'vehicle_puc', 'insurance_documents', 'puc_documents', 'personal_expenses'];
   const before = Object.fromEntries(preserved.map((table) => [table, snapshot(table)]));
   await migration.migrateDatabase(db); await migration.migrateDatabase(db);
-  assert.equal(raw.prepare('PRAGMA user_version').get().user_version, 7);
+  assert.equal(raw.prepare('PRAGMA user_version').get().user_version, 8);
   for (const table of preserved) assert.equal(snapshot(table), before[table]);
   assert.equal(raw.prepare('SELECT count(*) AS n FROM vehicle_reminder_sources').get().n, 6);
   assert.equal(raw.prepare('PRAGMA foreign_key_check').all().length, 0);
   const fresh = database(':memory:'); await migration.migrateDatabase(fresh.db);
-  assert.equal(fresh.raw.prepare('PRAGMA user_version').get().user_version, 7); fresh.raw.close();
+  assert.equal(fresh.raw.prepare('PRAGMA user_version').get().user_version, 8); fresh.raw.close();
   const failed = database(':memory:');
   for (const step of migrations.slice(0, 6)) failed.raw.exec(step[1]);
   await assert.rejects(() => migration.migrateDatabase({ ...failed.db, execAsync: async (sql) => {

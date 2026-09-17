@@ -55,11 +55,11 @@ async function main() {
   const galleryBefore = snapshot('vehicle_photos');
   const personalBefore = snapshot('personal_expenses');
   await migration.migrateDatabase(db); await migration.migrateDatabase(db);
-  assert.equal(raw.prepare('PRAGMA user_version').get().user_version, 7);
+  assert.equal(raw.prepare('PRAGMA user_version').get().user_version, 8);
   assert.equal(snapshot('vehicles'), vehiclesBefore); assert.equal(snapshot('vehicle_photos'), galleryBefore);
   assert.equal(snapshot('personal_expenses'), personalBefore);
   const fresh = database(':memory:'); await migration.migrateDatabase(fresh.db);
-  assert.equal(fresh.raw.prepare('PRAGMA user_version').get().user_version, 7);
+  assert.equal(fresh.raw.prepare('PRAGMA user_version').get().user_version, 8);
   fresh.raw.close();
   const repo = load('src/database/vehicle-services.ts', { 'expo-sqlite': {
     openDatabaseAsync: async (name, options, directory) => {

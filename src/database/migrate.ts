@@ -1,6 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-const DATABASE_VERSION = 7;
+const DATABASE_VERSION = 8;
 
 export async function migrateDatabase(db: SQLiteDatabase) {
   await db.execAsync('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;');
@@ -347,6 +347,54 @@ export async function migrateDatabase(db: SQLiteDatabase) {
           UPDATE reminder_change_state SET revision = revision + 1 WHERE id = 1;
         END;
         PRAGMA user_version = 7;
+      `);
+    });
+  }
+  if (currentVersion < 8) {
+    await db.withTransactionAsync(async () => {
+      await db.execAsync(`
+        CREATE TABLE personal_categories (
+          id TEXT PRIMARY KEY NOT NULL,
+          name TEXT NOT NULL CHECK (length(trim(name)) BETWEEN 1 AND 80),
+          type TEXT NOT NULL CHECK (type IN ('expense', 'income')),
+          is_system INTEGER NOT NULL DEFAULT 0 CHECK (is_system IN (0, 1)),
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          UNIQUE(id, type), UNIQUE(type, name)
+        );
+        CREATE TABLE personal_transactions (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          type TEXT NOT NULL CHECK (type IN ('expense', 'income')),
+          amount INTEGER NOT NULL CHECK (typeof(amount) = 'integer' AND amount BETWEEN 1 AND 99999999999),
+          category_id TEXT NOT NULL,
+          transaction_date TEXT NOT NULL CHECK (length(transaction_date) = 10 AND transaction_date GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'),
+          description TEXT CHECK (description IS NULL OR length(description) <= 200),
+          notes TEXT CHECK (notes IS NULL OR length(notes) <= 2000),
+          payment_method TEXT CHECK (payment_method IS NULL OR payment_method IN ('Cash', 'UPI', 'Credit Card', 'Debit Card', 'Bank Transfer', 'Other')),
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          FOREIGN KEY(category_id, type) REFERENCES personal_categories(id, type) ON DELETE RESTRICT
+        );
+        CREATE INDEX personal_transactions_date ON personal_transactions(transaction_date DESC, id DESC);
+        CREATE INDEX personal_transactions_type_date ON personal_transactions(type, transaction_date DESC, id DESC);
+        CREATE INDEX personal_transactions_category ON personal_transactions(category_id);
+        INSERT OR IGNORE INTO personal_categories(id, name, type, is_system, created_at, updated_at) VALUES
+          ('expense-food', 'Food', 'expense', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+          ('expense-groceries', 'Groceries', 'expense', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+          ('expense-transport', 'Transport', 'expense', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+          ('expense-shopping', 'Shopping', 'expense', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+          ('expense-bills', 'Bills', 'expense', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+          ('expense-health', 'Health', 'expense', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+          ('expense-entertainment', 'Entertainment', 'expense', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+          ('expense-education', 'Education', 'expense', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+          ('expense-rent', 'Rent', 'expense', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+          ('expense-other', 'Other', 'expense', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+          ('income-salary', 'Salary', 'income', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+          ('income-business', 'Business', 'income', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+          ('income-interest', 'Interest', 'income', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+          ('income-gift', 'Gift', 'income', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+          ('income-other', 'Other', 'income', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+        PRAGMA user_version = 8;
       `);
     });
   }

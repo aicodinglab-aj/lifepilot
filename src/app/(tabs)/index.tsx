@@ -59,10 +59,9 @@ export default function HomeScreen() {
 
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Personal Expense Manager, coming soon"
-          accessibilityState={{ disabled: true }}
-          disabled
-          style={styles.card}>
+          accessibilityLabel="Personal Expense Manager"
+          onPress={() => router.push('/personal')}
+          style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}>
           <View style={styles.iconBox}>
             <Text style={styles.icon}>▣</Text>
           </View>
@@ -70,9 +69,8 @@ export default function HomeScreen() {
           <View style={styles.cardContent}>
             <Text style={styles.cardTitle}>Personal Expense Manager</Text>
             <Text style={styles.cardText}>
-              Daily expenses, income, budgets, categories and reports.
+              Personal expenses, income, categories and transaction history.
             </Text>
-            <Text style={styles.comingSoon}>Coming soon</Text>
           </View>
 
         </Pressable>
