@@ -8,22 +8,44 @@ import { withVehicleOperation } from './vehicle-operation';
 
 export type SelectedVehiclePhoto = { id: string; uri: string; };
 
-export async function pickVehiclePhotos(camera: boolean): Promise<SelectedVehiclePhoto[]> {
+export async function pickVehiclePhotos(camera: boolean, cover = false): Promise<SelectedVehiclePhoto[]> {
   if (Platform.OS === 'web') throw new Error('Vehicle photo storage is available in the Android and iOS app.');
   if (camera) {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (!permission.granted) throw new Error('Camera access is required. Enable it in device Settings, or choose photos from your gallery.');
   }
   // The system photo picker grants access only to selected images; no broad library permission is needed.
+  // SDK 57 supports a wide crop on Android; iOS's native editor is square.
+  const options: ImagePicker.ImagePickerOptions = {
+    mediaTypes: ['images'], quality: 0.9, allowsEditing: cover,
+    allowsMultipleSelection: !camera && !cover,
+    ...(cover && Platform.OS === 'android' ? { aspect: [16, 9] as [number, number] } : {}),
+  };
+  // Temporary diagnostics: only configuration, never assets, paths or vehicle IDs.
+  if (process.env.EXPO_PUBLIC_APP_VARIANT !== 'production'
+    && (__DEV__ || process.env.EXPO_PUBLIC_APP_VARIANT === 'preview')) {
+    console.info('[vehicle-photo-picker] launch', {
+      source: camera ? 'camera' : 'gallery', purpose: cover ? 'cover' : 'normal',
+      allowsEditing: options.allowsEditing,
+      allowsMultipleSelection: options.allowsMultipleSelection,
+      aspect: options.aspect ?? null,
+    });
+  }
   const result = camera
-    ? await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.9 })
-    : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsMultipleSelection: true, quality: 0.9 });
+    ? await ImagePicker.launchCameraAsync(options)
+    : await ImagePicker.launchImageLibraryAsync(options);
   if (result.canceled) return [];
   return result.assets.map((asset) => ({ id: randomUUID(), uri: asset.uri }));
 }
 
 export async function addVehiclePhotos(db: SQLiteDatabase, vehicleId: number, camera: boolean) {
   await saveSelectedVehiclePhotos(db, vehicleId, await pickVehiclePhotos(camera));
+}
+
+export async function addVehicleCoverPhoto(db: SQLiteDatabase, vehicleId: number, camera: boolean) {
+  const photos = await pickVehiclePhotos(camera, true);
+  if (!photos.length) return;
+  await withVehicleOperation(vehicleId, () => savePhotos(db, vehicleId, photos.slice(0, 1), undefined, true));
 }
 
 export async function saveSelectedVehiclePhotos(
@@ -33,7 +55,7 @@ export async function saveSelectedVehiclePhotos(
 }
 
 async function savePhotos(
-  db: SQLiteDatabase, vehicleId: number, photos: SelectedVehiclePhoto[], coverId?: string,
+  db: SQLiteDatabase, vehicleId: number, photos: SelectedVehiclePhoto[], coverId?: string, makeCover = false,
 ) {
   if (!await db.getFirstAsync('SELECT id FROM vehicles WHERE id = ?', [vehicleId])) {
     throw new Error('This vehicle no longer exists.');
@@ -49,24 +71,17 @@ async function savePhotos(
     let uri: string | undefined;
     try {
       uri = await copyPhoto(vehicleId, id, asset.uri);
-      await insertPhoto(db, { id, vehicleId, localUri: uri, isCover: 0, createdAt: new Date().toISOString() });
-      if (__DEV__) console.debug('[vehicle-photo] saved', { vehicleId, photoId: id, savedUri: uri });
+      await insertPhoto(db, { id, vehicleId, localUri: uri, isCover: 0, createdAt: new Date().toISOString() }, makeCover);
       saved++;
     } catch (error) {
-      console.error('Vehicle photo save failed:', {
-        vehicleId,
-        photoId: id,
-        sourceUri: asset.uri,
-        destinationUri: uri,
-        error,
-      });
+      console.error('Vehicle photo save failed.');
 
       if (uri) {
         try {
           const file = ownedPhotoFile(vehicleId, id, uri);
           if (file.exists) file.delete();
-        } catch (cleanupError) {
-          console.error('Vehicle photo cleanup failed:', cleanupError);
+        } catch {
+          console.error('Vehicle photo cleanup failed.');
         }
       }
 

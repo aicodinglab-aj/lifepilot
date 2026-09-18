@@ -65,7 +65,8 @@ export function installReminderNotificationHandler() {
   if (Platform.OS === 'web') return;
   Notifications.setNotificationHandler({ handleNotification: async (notification) => {
     const data = notification.request.content.data;
-    const ours = (data?.owner === NOTIFICATION_OWNER && notification.request.identifier.startsWith(NOTIFICATION_PREFIX)) || data?.owner === TEST_NOTIFICATION_OWNER;
+    const ours = (data?.owner === NOTIFICATION_OWNER && notification.request.identifier.startsWith(NOTIFICATION_PREFIX)) || data?.owner === TEST_NOTIFICATION_OWNER
+      || (data?.owner === 'lifepilot.tasks.v1' && notification.request.identifier.startsWith('lifepilot.tasks.v1:'));
     return { shouldShowBanner: ours, shouldShowList: ours, shouldPlaySound: ours, shouldSetBadge: false };
   } });
 }

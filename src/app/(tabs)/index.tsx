@@ -41,6 +41,15 @@ export default function HomeScreen() {
       </View>
 
       <View style={themed_styles.cards}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Tasks / To-Do" onPress={() => router.push('/tasks')}
+          style={({ pressed }) => [themed_styles.card, pressed && themed_styles.cardPressed]}>
+          <View style={themed_styles.iconBox}>
+            <SymbolView name={{ ios: 'checklist', android: 'checklist', web: 'checklist' }} size={26} tintColor={appearance.colors.green} />
+          </View>
+          <View style={themed_styles.cardContent}><Text style={themed_styles.cardTitle}>Tasks / To-Do</Text>
+            <Text style={themed_styles.cardText}>Plan your day, track tasks and get local reminders.</Text></View>
+          <Text style={themed_styles.arrow}>›</Text>
+        </Pressable>
         <Pressable accessibilityRole="button" onPress={() => router.push('/reminders')}
           style={({ pressed }) => [themed_styles.card, { minHeight: 72 }, pressed && themed_styles.cardPressed]}>
           <View style={themed_styles.iconBox}>

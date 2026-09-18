@@ -9,6 +9,7 @@ import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { lifePilotColors } from '@/constants/lifepilot-theme';
 import { migrateDatabase } from '@/database/migrate';
 import { ReminderProvider } from '@/features/reminders/reminder-provider';
+import { TaskProvider } from '@/features/tasks/task-provider';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -61,6 +62,7 @@ function ThemedNavigation() {
       <ThemeProvider value={navigationTheme}>
         <StatusBar barStyle={appearance.isDark ? 'light-content' : 'dark-content'} backgroundColor={appearance.colors.background} />
         <ReminderProvider>
+        <TaskProvider>
         <AnimatedSplashOverlay />
         <Stack
           screenOptions={{
@@ -90,6 +92,7 @@ function ThemedNavigation() {
           <Stack.Screen name="vehicle/photos" options={{ title: 'Documents & Photos' }} />
           <Stack.Screen name="vehicle/module" options={{ title: 'My Vehicle' }} />
         </Stack>
+        </TaskProvider>
         </ReminderProvider>
       </ThemeProvider>
   );

@@ -6,11 +6,11 @@ const vm = require('node:vm');
 const { DatabaseSync } = require('node:sqlite');
 const ts = require('typescript');
 
-function load(relative, mocks = {}) {
+function load(relative, mocks = {}, runtime = {}) {
   const source = fs.readFileSync(path.join(__dirname, '..', relative), 'utf8');
   const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText;
   const exports = {};
-  vm.runInNewContext(code, { exports, Error, __DEV__: false, require: (name) => {
+  vm.runInNewContext(code, { exports, Error, __DEV__: false, process: { env: {} }, ...runtime, require: (name) => {
     if (name in mocks) return mocks[name];
     if (name === './vehicle-operation') return load('src/features/vehicles/vehicle-operation.ts');
     throw new Error(`Unexpected runtime dependency: ${name}`);
@@ -49,7 +49,7 @@ async function main() {
   await vehicles.insertVehicle(db, { vehicleType: 'Car', registrationNumber: 'TEST', make: 'Test', model: 'One', variant: null, modelYear: 2020, fuelType: 'Petrol', odometerKm: 0 });
   await migration.migrateDatabase(db);
   await migration.migrateDatabase(db);
-  assert.equal(raw.prepare('PRAGMA user_version').get().user_version, 8);
+  assert.equal(raw.prepare('PRAGMA user_version').get().user_version, 9);
   assert.equal((await vehicles.getVehicles(db)).length, 1);
   await vehicles.insertVehicle(db, { vehicleType: 'Car', registrationNumber: 'OTHER', make: 'Test', model: 'Two', variant: null, modelYear: 2020, fuelType: 'Petrol', odometerKm: 0 });
   const photo = (id, vehicleId) => ({ id, vehicleId, localUri: `file:///${id}.jpg`, isCover: 0, createdAt: '2026-09-08' });
@@ -69,8 +69,8 @@ async function main() {
   assert.equal((await vehicles.getVehicles(db, 1))[0].coverPhotoUri, null);
   const fresh = database();
   await migration.migrateDatabase(fresh.db);
-  assert.equal(fresh.raw.prepare('PRAGMA user_version').get().user_version, 8);
-  fresh.raw.exec('PRAGMA user_version = 9');
+  assert.equal(fresh.raw.prepare('PRAGMA user_version').get().user_version, 9);
+  fresh.raw.exec('PRAGMA user_version = 10');
   await assert.rejects(() => migration.migrateDatabase(fresh.db));
 
   class Directory {
@@ -236,6 +236,88 @@ async function main() {
   const empty = await creator.createVehicleWithPhotos(db, { ...draft, registrationNumber: 'NO-PHOTOS' }, []);
   assert.equal(empty.photoError, null);
   assert.equal((await repo.getVehiclePhotos(db, empty.vehicleId)).length, 0);
+  const pickerCalls = [];
+  const pickerLogs = [];
+  let canceled = false, pickerFails = false, cameraGranted = true, coverCopyFails = false;
+  const coverFiles = new Set();
+  const pick = async (options) => {
+    pickerCalls.push(options);
+    if (pickerFails) throw new Error('picker failure');
+    return canceled ? { canceled: true } : { canceled: false, assets: [{ uri: 'cache:crop.jpg' }] };
+  };
+  const covers = load('src/features/vehicles/photo-service.ts', {
+    'expo-crypto': { randomUUID: () => `cover-${++nextId}` },
+    'expo-image-picker': {
+      launchImageLibraryAsync: pick, launchCameraAsync: pick,
+      requestCameraPermissionsAsync: async () => ({ granted: cameraGranted }),
+    },
+    'react-native': { Platform: { OS: 'android' } },
+    '@/database/vehicle-photos': repo,
+    '@/storage/vehicle-photos': {
+      copyPhoto: async (vehicleId, photoId) => {
+        if (coverCopyFails) throw new Error('copy failure');
+        const uri = `file:///documents/vehicle-photos/${vehicleId}/${photoId}.jpg`;
+        coverFiles.add(uri); return uri;
+      },
+      ownedPhotoFile: (_, __, uri) => ({ exists: coverFiles.has(uri), delete: () => coverFiles.delete(uri) }),
+    },
+  }, { process: { env: { EXPO_PUBLIC_APP_VARIANT: 'preview' } },
+    console: { info: (...args) => pickerLogs.push(args), error: () => {} } });
+  await covers.pickVehiclePhotos(false);
+  assert.equal(pickerCalls.at(-1).allowsEditing, false);
+  assert.equal(pickerCalls.at(-1).allowsMultipleSelection, true);
+  assert.equal(pickerCalls.at(-1).aspect, undefined);
+  for (const screen of ['add-service', 'coverage-edit']) {
+    const source = fs.readFileSync(path.join(__dirname, `../src/app/vehicle/${screen}.tsx`), 'utf8');
+    assert.match(source, /pickVehiclePhotos\(camera\)/, 'documents use the uncropped default picker');
+    assert.doesNotMatch(source, /addVehicleCoverPhoto|pickVehiclePhotos\(camera,\s*true\)/);
+  }
+  await covers.pickVehiclePhotos(true);
+  assert.equal(pickerCalls.at(-1).allowsEditing, false);
+  const originals = await repo.getVehiclePhotos(db, 1);
+  const otherVehicle = await repo.getVehiclePhotos(db, 2);
+  await covers.addVehicleCoverPhoto(db, 1, false);
+  assert.equal(pickerCalls.at(-1).allowsEditing, true);
+  assert.equal(pickerCalls.at(-1).allowsMultipleSelection, false);
+  assert.equal(JSON.stringify(pickerCalls.at(-1).aspect), '[16,9]');
+  const afterCover = await repo.getVehiclePhotos(db, 1);
+  assert.equal(afterCover.length, originals.length + 1);
+  assert.ok(afterCover.find((p) => p.isCover).id.startsWith('cover-'));
+  for (const original of originals) assert.equal(afterCover.find((p) => p.id === original.id).localUri, original.localUri);
+  await covers.addVehicleCoverPhoto(db, 1, true);
+  assert.equal(pickerCalls.at(-1).allowsEditing, true);
+  assert.equal(pickerCalls.at(-1).allowsMultipleSelection, false);
+  assert.equal(pickerCalls.at(-1).quality, 0.9);
+  assert.equal(pickerCalls.at(-1).selectionLimit, undefined);
+  assert.equal(JSON.stringify(pickerCalls.at(-1).aspect), '[16,9]');
+  assert.deepEqual(JSON.parse(JSON.stringify(pickerLogs.at(-1))), ['[vehicle-photo-picker] launch', {
+    source: 'camera', purpose: 'cover', allowsEditing: true, allowsMultipleSelection: false, aspect: [16, 9],
+  }]);
+  assert.deepEqual(JSON.parse(JSON.stringify(pickerLogs.at(-2))), ['[vehicle-photo-picker] launch', {
+    source: 'gallery', purpose: 'cover', allowsEditing: true, allowsMultipleSelection: false, aspect: [16, 9],
+  }]);
+  const snapshot = await repo.getVehiclePhotos(db, 1);
+  canceled = true;
+  await covers.addVehicleCoverPhoto(db, 1, false);
+  await covers.addVehicleCoverPhoto(db, 1, true);
+  canceled = false;
+  pickerFails = true;
+  await assert.rejects(() => covers.addVehicleCoverPhoto(db, 1, false), /picker failure/);
+  pickerFails = false; cameraGranted = false;
+  await assert.rejects(() => covers.addVehicleCoverPhoto(db, 1, true), /Camera access/);
+  coverCopyFails = true;
+  await assert.rejects(() => covers.addVehicleCoverPhoto(db, 1, false), /copy failure/);
+  coverCopyFails = false;
+  const fileCount = coverFiles.size;
+  // Fail the insert after clearing the cover flag: SQLite must roll both back.
+  raw.exec(`CREATE TEMP TRIGGER fail_cover_insert BEFORE INSERT ON vehicle_photos
+    BEGIN SELECT RAISE(ABORT, 'cover insert failure'); END`);
+  await assert.rejects(() => covers.addVehicleCoverPhoto(db, 1, false), /cover insert failure/);
+  raw.exec('DROP TRIGGER fail_cover_insert');
+  assert.equal(coverFiles.size, fileCount, 'failed save cleans up its copied file');
+  assert.deepEqual(await repo.getVehiclePhotos(db, 1), snapshot, 'cancel and failures preserve cover and gallery');
+  assert.deepEqual(await repo.getVehiclePhotos(db, 2), otherVehicle);
+  console.log('PASS: uncropped normal/multiple selection, dedicated gallery/camera crop options, cover save, originals, cancellation, permission/picker/copy/transaction failure, cleanup and isolation.');
   raw.close(); fresh.raw.close();
   console.log('PASS: draft selection, camera denial, vehicle ID, create-before-copy, selected cover, duplicate vehicle, photo failure preserves vehicle, failed insert cleanup.');
   console.log('PASS: migrations, preservation, foreign keys, cover constraints/promotion, vehicle isolation, path validation, missing files, cancellation, deletion failure/retry.');

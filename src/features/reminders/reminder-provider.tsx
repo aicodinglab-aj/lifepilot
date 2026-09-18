@@ -69,7 +69,10 @@ export function ReminderProvider({ children }: { children: ReactNode }) {
       ticks++;
       void getReminderRevision(db).then((revision) => { if (revision !== lastRevision.current || ticks % 4 === 0) schedule(); }).catch(() => {});
     }, 15000);
-    const received = Platform.OS === 'web' ? null : Notifications.addNotificationReceivedListener(schedule);
+    const received = Platform.OS === 'web' ? null : Notifications.addNotificationReceivedListener((notification) => {
+      const owner = notification.request.content.data?.owner;
+      if (owner === NOTIFICATION_OWNER || owner === TEST_NOTIFICATION_OWNER) schedule();
+    });
     return () => {
       mounted.current = false; clearTimeout(debounce); clearInterval(poll);
       operations(); database.remove(); app.remove(); received?.remove();
@@ -87,12 +90,13 @@ function ReminderNotificationNavigation() {
     const open = (response: Notifications.NotificationResponse) => {
       const request = response.notification.request;
       const owner = request.content.data?.owner;
-      if (owner !== NOTIFICATION_OWNER && owner !== TEST_NOTIFICATION_OWNER) return;
+      const task = owner === 'lifepilot.tasks.v1' && request.identifier.startsWith('lifepilot.tasks.v1:');
+      if (!task && owner !== NOTIFICATION_OWNER && owner !== TEST_NOTIFICATION_OWNER) return;
       const key = `${request.identifier}:${response.notification.date}`;
       if (handled.current === key) return;
       handled.current = key;
       // A fixed route avoids trusting notification URLs or navigating to deleted source records.
-      router.push('/reminders');
+      router.push(task ? '/tasks' : '/reminders');
       void Notifications.clearLastNotificationResponseAsync().catch(() => {});
     };
     const last = Notifications.getLastNotificationResponse();

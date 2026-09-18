@@ -77,12 +77,6 @@ export async function copyPhoto(
 
     await source.copy(destination);
 
-    // Temporary metadata-only diagnostics for native verification; remove once verified.
-    if (__DEV__) console.debug('[vehicle-photo] copied', {
-      vehicleId, photoId, sourceUri, savedUri: destination.uri,
-      resolvedUri: destination.uri, exists: destination.exists, size: destination.size,
-    });
-
     if (!destination.exists || destination.size === 0) {
       throw new Error('The image could not be copied.');
     }
@@ -100,12 +94,8 @@ export async function copyPhoto(
 export function availablePhotoUri(vehicleId: number, photoId: string, uri: string): string | null {
   try {
     const file = ownedPhotoFile(vehicleId, photoId, uri);
-    if (__DEV__) console.debug('[vehicle-photo] resolve', {
-      vehicleId, photoId, savedUri: uri, resolvedUri: file.uri, exists: file.exists, size: file.size,
-    });
     return file.exists ? file.uri : null;
-  } catch (error) {
-    if (__DEV__) console.debug('[vehicle-photo] rejected', { vehicleId, photoId, savedUri: uri, error });
+  } catch {
     return null;
   }
 }

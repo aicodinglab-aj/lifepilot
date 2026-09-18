@@ -9,7 +9,7 @@ import { VehicleHeader } from '@/components/vehicles/vehicle-page';
 import { lifePilotColors as colors } from '@/constants/lifepilot-theme';
 import { getVehiclePhotos } from '@/database/vehicle-photos';
 import { getVehicles } from '@/database/vehicles';
-import { addVehiclePhotos, chooseCover, removeVehiclePhoto } from '@/features/vehicles/photo-service';
+import { addVehicleCoverPhoto, addVehiclePhotos, chooseCover, removeVehiclePhoto } from '@/features/vehicles/photo-service';
 import type { Vehicle } from '@/features/vehicles/vehicle';
 import type { VehiclePhoto } from '@/features/vehicles/vehicle-photo';
 
@@ -55,6 +55,14 @@ export default function VehiclePhotosScreen() {
     ]);
   }
 
+  function pickCover() {
+    Alert.alert('Choose cover photo', 'Choose a new photo, then crop and adjust it.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Gallery', onPress: () => { void perform(() => addVehicleCoverPhoto(db, vehicleId, false)); } },
+      { text: 'Camera', onPress: () => { void perform(() => addVehicleCoverPhoto(db, vehicleId, true)); } },
+    ]);
+  }
+
   if (loading) return <View style={themed_styles.center}><VehicleHeader title="Documents & Photos" /><ActivityIndicator color={appearance.colors.green} /></View>;
   if (error || !vehicle) return <View style={themed_styles.center}><VehicleHeader title="Documents & Photos" /><Text style={themed_styles.text}>{error}</Text><Action label="Try again" onPress={() => { void load(); }} /></View>;
   const cover = photos.find((photo) => photo.isCover === 1);
@@ -68,6 +76,7 @@ export default function VehiclePhotosScreen() {
         <Text style={themed_styles.text}>{vehicle.modelYear} · {vehicle.vehicleType} · {vehicle.fuelType}</Text>
         <Text style={themed_styles.text}>{vehicle.odometerKm.toLocaleString()} km{vehicle.variant ? ` · ${vehicle.variant}` : ''}</Text>
         <VehiclePhotoImage vehicleId={vehicleId} photoId={cover?.id ?? null} uri={cover?.localUri ?? null} style={{ height: 230 }} />
+        <Action label={cover ? 'Change Cover Photo' : 'Add Cover Photo'} disabled={busy} onPress={pickCover} />
         <Text style={themed_styles.title}>Photos ({photos.length})</Text>
         <Text style={themed_styles.text}>Your vehicle photo gallery. Document uploads are coming in a future update.</Text>
         <View style={themed_styles.row}>

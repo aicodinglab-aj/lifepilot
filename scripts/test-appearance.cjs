@@ -32,6 +32,51 @@ function storage(entries = []) {
 }
 const custom = (base, accent, system = null) => theme.resolveTheme('custom', system, { base, accent });
 
+test('Settings About navigation and developer information render safely across appearances', () => {
+  const jsx = (type, props) => typeof type === 'function' ? type(props) : ({ type, props });
+  let resolved = theme.resolveTheme('lifepilot', null);
+  let config = { version: '2.3.4', android: { versionCode: 42 }, ios: { buildNumber: '17' } };
+  const platform = { OS: 'android' }, actions = [];
+  let canGoBack = true;
+  const dependencies = {
+    'react/jsx-runtime': { jsx, jsxs: jsx },
+    'expo-constants': { __esModule: true, default: { get expoConfig() { return config; } } },
+    'expo-image': { Image: 'Image' },
+    'expo-router': { Stack: { Screen: 'Screen' }, router: {
+      push: (route) => actions.push(route), replace: (route) => actions.push(route),
+      back: () => actions.push('back'), canGoBack: () => canGoBack,
+    } },
+    'react-native': { Platform: platform, Pressable: 'Pressable', ScrollView: 'ScrollView', Text: 'Text', View: 'View' },
+    'react-native-safe-area-context': { SafeAreaView: 'SafeAreaView' },
+    '@/assets/images/lifepilot-icon.png': 'existing-logo',
+    '@/features/appearance/appearance-provider': { useAppearance: () => ({
+      colors: resolved.colors, preference: 'lifepilot', custom: { base: 'dark', accent: 'emerald' }, saving: false,
+    }) },
+    '@/features/appearance/theme': theme,
+  };
+  const about = load('src/app/about.tsx', dependencies);
+  const settings = load('src/app/settings.tsx', dependencies);
+  const nodes = (tree) => !tree || typeof tree !== 'object' ? [] : [tree, ...[tree.props?.children].flat(Infinity).flatMap(nodes)];
+  const text = (tree) => JSON.stringify(tree);
+  const row = nodes(settings.default()).find((node) => node.props?.accessibilityLabel === 'About LifePilot');
+  assert.ok(row); row.props.onPress(); assert.equal(actions.pop(), '/about');
+  for (const selected of [theme.resolveTheme('lifepilot', null), theme.resolveTheme('light', null),
+    theme.resolveTheme('system', 'dark'), theme.resolveTheme('system', 'light'), custom('dark', 'purple'), custom('light', 'purple')]) {
+    resolved = selected;
+    const tree = about.default();
+    assert.equal(tree.props.style.backgroundColor, selected.colors.background);
+    assert.match(text(tree), /DMJ Labs/); assert.match(text(tree), /Your personal vehicle and expense companion/);
+    assert.match(text(tree), /2\.3\.4/); assert.match(text(tree), /42/);
+    assert.equal(nodes(tree).find((node) => node.type === 'Image').props.source, 'existing-logo');
+    const header = nodes(tree).find((node) => node.type === 'Screen').props.options.headerLeft();
+    header.props.onPress(); assert.equal(actions.pop(), 'back');
+    canGoBack = false; header.props.onPress(); assert.equal(actions.pop(), '/settings'); canGoBack = true;
+  }
+  platform.OS = 'ios'; assert.match(text(about.default()), /17/);
+  platform.OS = 'web'; assert.match(text(about.default()), /Not available/);
+  config = null; platform.OS = 'android'; assert.match(text(about.default()), /Not available/);
+});
+
 test('fresh installation and upgrade without preference preserve LifePilot and existing data', async () => {
   for (const system of ['light', 'dark', null]) {
     const store = storage([['unrelated.setting', 'preserved']]);
@@ -292,6 +337,7 @@ test('root theme updates retain SQLite setup identities and update navigation co
     '@/constants/lifepilot-theme': legacy,
     '@/database/migrate': { migrateDatabase },
     '@/features/reminders/reminder-provider': { ReminderProvider: 'ReminderProvider' },
+    '@/features/tasks/task-provider': { TaskProvider: 'TaskProvider' },
   });
   const render = root.default().props.children.type;
   const first = render();

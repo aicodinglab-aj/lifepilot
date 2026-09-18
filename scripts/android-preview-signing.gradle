@@ -1,0 +1,25 @@
+// Applied by the local generated Android project only. Never print credentials.
+if (System.getenv('EXPO_PUBLIC_APP_VARIANT') != 'preview') {
+    throw new GradleException('Local Android build requires EXPO_PUBLIC_APP_VARIANT=preview')
+}
+def localSigning
+try {
+    localSigning = new groovy.json.JsonSlurper().parse(rootProject.file('../credentials.json')).android.keystore
+    if (!localSigning.keystorePath || !localSigning.keyAlias || !localSigning.keystorePassword || !localSigning.keyPassword) {
+        throw new IllegalArgumentException()
+    }
+    if (!rootProject.file('../' + localSigning.keystorePath).isFile()) {
+        throw new IllegalArgumentException()
+    }
+} catch (Exception ignored) {
+    throw new GradleException('Existing local EAS Android credentials are missing or invalid')
+}
+android.signingConfigs {
+    localEasPreview {
+        storeFile rootProject.file('../' + localSigning.keystorePath)
+        storePassword localSigning.keystorePassword
+        keyAlias localSigning.keyAlias
+        keyPassword localSigning.keyPassword
+    }
+}
+android.buildTypes.release.signingConfig = android.signingConfigs.localEasPreview

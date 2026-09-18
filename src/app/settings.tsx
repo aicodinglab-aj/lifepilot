@@ -73,6 +73,12 @@ export default function SettingsScreen() {
       </>}
       {saving && <Text accessibilityLiveRegion="polite" style={{ color: colors.muted }}>Saving appearance...</Text>}
       {error && <Text accessibilityRole="alert" style={{ color: colors.danger }}>{error}</Text>}
+      <Pressable accessibilityRole="button" accessibilityLabel="About LifePilot" onPress={() => router.push('/about')}
+        style={({ pressed }) => ({ padding: 18, minHeight: 64, borderRadius: 18, borderWidth: 1,
+          borderColor: colors.controlBorder, backgroundColor: colors.card, opacity: pressed ? 0.7 : 1 })}>
+        <Text style={{ color: colors.text, fontSize: 16, fontWeight: '700' }}>About LifePilot</Text>
+        <Text style={{ color: colors.muted, marginTop: 6 }}>App information and developer</Text>
+      </Pressable>
     </ScrollView>
   </SafeAreaView>;
 }

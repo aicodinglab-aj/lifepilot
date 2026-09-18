@@ -6,20 +6,28 @@ import { VehiclePhotoImage } from '@/components/vehicles/vehicle-photo-image';
 import { lifePilotColors as colors } from '@/constants/lifepilot-theme';
 import { useVehicle } from '@/features/vehicles/use-vehicle';
 import { vehicleModules } from '@/features/vehicles/vehicle-modules';
-import { useCoverageSummary } from '@/features/vehicles/use-coverage';
-import { coverageStatus } from '@/features/vehicles/coverage-status';
+import { useOverviewSummary } from '@/features/vehicles/use-overview-summary';
+import { coverageQuickStatus, serviceQuickStatus } from '@/features/vehicles/overview-summary';
 import { VehicleMileageReminder } from '@/components/vehicles/mileage-reminder';
 
 export default function VehicleOverviewScreen() {
   const themed_styles = useThemedStyles(styles);
   const themed_shared = useThemedStyles(shared);
   const state = useVehicle();
-  const { vehicle, vehicleId } = state;
-  const coverage = useCoverageSummary(vehicleId);
-  const status = (kind: 'insurance' | 'puc') => coverage.loading ? 'Loading…' : coverage.error ? 'Could not load' :
-    coverageStatus(coverage.data?.[kind]?.expiryDate, coverage.data?.[kind]?.startDate, coverage.today);
+  const { vehicleId } = state;
+  const vehicle = state.vehicle?.id === vehicleId ? state.vehicle : null;
+  const summary = useOverviewSummary(vehicleId);
+  const pending = { value: summary.error ?? 'Loading…', detail: undefined };
+  const status = (kind: 'insurance' | 'puc') => summary.data
+    ? coverageQuickStatus(summary.data[kind], summary.today) : pending;
+  const service = summary.data && vehicle ? serviceQuickStatus(summary.data.service, vehicle.odometerKm, summary.today) : pending;
   const params = { id: String(vehicleId) };
-  return <VehiclePage title="My Vehicle" {...state} vehicleId={vehicle ? vehicleId : undefined}>
+  const coverageHref = (kind: 'insurance' | 'puc'): Href => {
+    const record = summary.data?.[kind];
+    return record ? { pathname: '/vehicle/coverage-details', params: { ...params, kind, recordId: record.id } }
+      : { pathname: '/vehicle/coverage-history', params: { ...params, kind } };
+  };
+  return <VehiclePage title="My Vehicle" {...state} loading={state.loading && !vehicle} vehicleId={vehicle ? vehicleId : undefined}>
     {vehicle && <>
       <View style={themed_styles.hero}>
         <Pressable accessibilityRole="button" accessibilityLabel="Open vehicle photos"
@@ -41,9 +49,9 @@ export default function VehicleOverviewScreen() {
       <View style={themed_styles.section}>
         <Text style={themed_shared.sectionTitle}>Quick Status</Text>
         <View style={themed_styles.statusRow}>
-          <Status label="Next Service" value="View Service & Maintenance" />
-          <Status label="Insurance" value={status('insurance')} />
-          <Status label="PUC / Pollution" value={status('puc')} />
+          <Status label="Next Service" {...service} href={{ pathname: '/vehicle/services', params }} />
+          <Status label="Insurance" {...status('insurance')} href={coverageHref('insurance')} />
+          <Status label="PUC / Pollution" {...status('puc')} href={coverageHref('puc')} />
         </View>
         <VehicleMileageReminder vehicleId={vehicleId} odometer={vehicle.odometerKm} />
       </View>
@@ -65,9 +73,14 @@ function Metric({ label, value }: { label: string; value: string }) {
   const themed_styles = useThemedStyles(styles);
   return <View style={themed_styles.metric}><Text style={themed_styles.metricLabel}>{label}</Text><Text style={themed_styles.metricValue}>{value}</Text></View>;
 }
-function Status({ label, value }: { label: string; value: string }) {
+function Status({ label, value, detail, href }: { label: string; value: string; detail?: string; href: Href }) {
   const themed_styles = useThemedStyles(styles);
-  return <View style={themed_styles.status}><View style={themed_styles.statusMark} /><Text style={themed_styles.statusLabel}>{label}</Text><Text style={themed_styles.statusValue}>{value}</Text></View>;
+  return <Pressable accessibilityRole="button" accessibilityLabel={`${label}: ${value}${detail ? `, ${detail}` : ''}`}
+    onPress={() => router.push(href)} style={({ pressed }) => [themed_styles.status, pressed && { opacity: 0.7 }]}>
+    <View style={themed_styles.statusMark} /><Text style={themed_styles.statusLabel}>{label}</Text>
+    <Text style={themed_styles.statusValue}>{value}</Text>
+    {detail && <Text style={themed_styles.statusValue}>{detail}</Text>}
+  </Pressable>;
 }
 function NavigationCard({ icon, title, subtitle, href }: { icon: string; title: string; subtitle: string; href: Href }) {
   const themed_styles = useThemedStyles(styles);

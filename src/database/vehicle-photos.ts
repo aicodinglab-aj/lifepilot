@@ -8,7 +8,15 @@ export function getVehiclePhotos(db: SQLiteDatabase, vehicleId: number) {
       WHERE vehicle_id = ? ORDER BY created_at, id`, [vehicleId]);
 }
 
-export async function insertPhoto(db: SQLiteDatabase, photo: VehiclePhoto) {
+export async function insertPhoto(db: SQLiteDatabase, photo: VehiclePhoto, makeCover = false) {
+  if (makeCover) {
+    // Roll back the old cover flag as well as the new row if saving fails.
+    await db.withExclusiveTransactionAsync(async (tx) => {
+      await tx.runAsync('UPDATE vehicle_photos SET is_cover = 0 WHERE vehicle_id = ?', [photo.vehicleId]);
+      await insertPhoto(tx, photo);
+    });
+    return;
+  }
   await db.runAsync(
     `INSERT INTO vehicle_photos (id, vehicle_id, local_uri, is_cover, created_at)
      VALUES (?, ?, ?, CASE WHEN EXISTS (

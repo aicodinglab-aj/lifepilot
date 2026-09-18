@@ -18,9 +18,12 @@ export function getServiceHistory(db: SQLiteDatabase, vehicleId: number, cursor?
 export function getService(db: SQLiteDatabase, vehicleId: number, serviceId: string) {
   return db.getFirstAsync<ServiceRecord>(`SELECT ${columns} FROM vehicle_services WHERE vehicle_id = ? AND id = ?`, [vehicleId, serviceId]);
 }
-export async function getServiceSummary(db: SQLiteDatabase, vehicleId: number) {
-  const latest = await db.getFirstAsync<ServiceRecord>(`SELECT ${columns} FROM vehicle_services WHERE vehicle_id = ?
+export function getLatestService(db: SQLiteDatabase, vehicleId: number) {
+  return db.getFirstAsync<ServiceRecord>(`SELECT ${columns} FROM vehicle_services WHERE vehicle_id = ?
     ORDER BY service_date DESC, created_at DESC, id DESC LIMIT 1`, [vehicleId]);
+}
+export async function getServiceSummary(db: SQLiteDatabase, vehicleId: number) {
+  const latest = await getLatestService(db, vehicleId);
   const totals = await db.getFirstAsync<{ total: number | null; missing: number }>(
     `SELECT ROUND(SUM(${totalSql}), 2) AS total,
     COALESCE(SUM(CASE WHEN parts_cost IS NULL AND labour_cost IS NULL AND other_cost IS NULL THEN 1 ELSE 0 END), 0) AS missing

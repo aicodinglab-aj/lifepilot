@@ -91,7 +91,7 @@ async function main() {
   const snapshot = () => JSON.stringify(tables.map((name) => raw.prepare(`SELECT * FROM "${name}"`).all()));
   const before = snapshot();
   await migration.migrateDatabase(db); await migration.migrateDatabase(db);
-  assert.equal(raw.prepare('PRAGMA user_version').get().user_version, 8);
+  assert.equal(raw.prepare('PRAGMA user_version').get().user_version, 9);
   assert.equal(snapshot(), before);
   assert.equal((await repo.getCategories(db)).length, 15);
   assert.equal((await repo.getTransactions(db)).rows.length, 0);
@@ -158,7 +158,7 @@ async function main() {
     SELECT 'expense', 99999999999, 'expense-food', '2026-09-01', 'now', 'now' FROM sequence;`);
   assert.equal((await repo.getMonthlyTotals(fresh.db, '2026-09')).expenses, (99999999999n * 100001n).toString());
   assert.equal((await repo.getTransactions(fresh.db)).rows.length, 40);
-  fresh.raw.exec('PRAGMA user_version = 9'); await assert.rejects(migration.migrateDatabase(fresh.db)); fresh.raw.close();
+  fresh.raw.exec('PRAGMA user_version = 10'); await assert.rejects(migration.migrateDatabase(fresh.db)); fresh.raw.close();
   const failed = database(':memory:');
   for (const step of migrations.slice(0, 7)) failed.raw.exec(step[1]);
   await assert.rejects(migration.migrateDatabase({ ...failed.db, execAsync: async (sql) => {

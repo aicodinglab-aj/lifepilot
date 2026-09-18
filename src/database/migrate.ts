@@ -1,6 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-const DATABASE_VERSION = 8;
+const DATABASE_VERSION = 9;
 
 export async function migrateDatabase(db: SQLiteDatabase) {
   await db.execAsync('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;');
@@ -395,6 +395,40 @@ export async function migrateDatabase(db: SQLiteDatabase) {
           ('income-gift', 'Gift', 'income', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
           ('income-other', 'Other', 'income', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
         PRAGMA user_version = 8;
+      `);
+    });
+  }
+  if (currentVersion < 9) {
+    await db.withTransactionAsync(async () => {
+      await db.execAsync(`
+        CREATE TABLE task_categories (
+          id TEXT PRIMARY KEY NOT NULL,
+          name TEXT NOT NULL UNIQUE CHECK (length(trim(name)) BETWEEN 1 AND 80)
+        );
+        INSERT OR IGNORE INTO task_categories(id, name) VALUES
+          ('personal', 'Personal'), ('work', 'Work'), ('shopping', 'Shopping'), ('home', 'Home'), ('other', 'Other');
+        CREATE TABLE tasks (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          title TEXT NOT NULL CHECK (length(trim(title)) BETWEEN 1 AND 200),
+          description TEXT CHECK (description IS NULL OR length(description) <= 4000),
+          category_id TEXT REFERENCES task_categories(id) ON DELETE SET NULL,
+          priority TEXT NOT NULL DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high')),
+          due_date TEXT CHECK (due_date IS NULL OR (length(due_date) = 10 AND due_date GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]')),
+          due_time TEXT CHECK (due_time IS NULL OR (due_date IS NOT NULL AND length(due_time) = 5 AND due_time GLOB '[0-2][0-9]:[0-5][0-9]' AND due_time <= '23:59')),
+          reminder_enabled INTEGER NOT NULL DEFAULT 0 CHECK (reminder_enabled IN (0, 1)),
+          completed INTEGER NOT NULL DEFAULT 0 CHECK (completed IN (0, 1)),
+          completed_at TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          CHECK (reminder_enabled = 0 OR (due_date IS NOT NULL AND due_time IS NOT NULL)),
+          CHECK ((completed = 0 AND completed_at IS NULL) OR (completed = 1 AND completed_at IS NOT NULL))
+        );
+        CREATE INDEX tasks_completed_due ON tasks(completed, due_date, due_time, id);
+        CREATE INDEX tasks_due ON tasks(due_date, due_time, id);
+        CREATE INDEX tasks_category ON tasks(category_id, completed);
+        CREATE INDEX tasks_priority ON tasks(priority, completed);
+        CREATE INDEX tasks_completed_history ON tasks(completed, completed_at DESC, id DESC);
+        PRAGMA user_version = 9;
       `);
     });
   }
