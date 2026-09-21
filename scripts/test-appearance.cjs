@@ -40,17 +40,17 @@ test('shared V2 header renders an icon-only accessible Back action', () => {
     'react/jsx-runtime': { jsx, jsxs: jsx },
     'expo-router': { Stack: { Screen: 'Screen' }, router: { canGoBack: () => canGoBack,
       back: () => actions.push('back'), replace: (route) => actions.push(route) } },
-    'react-native': { Text: 'Text' },
+    'expo-symbols': { SymbolView: 'SymbolView' },
+    'react-native': { View: 'View' },
     '@/constants/design-system': { iconSizes: { navigation: 24 } },
     '@/features/appearance/appearance-provider': { useAppearance: () => ({ colors: theme.resolveTheme('lifepilot').colors }) },
     './button': { IconButton: (props) => ({ type: 'IconButton', props }) },
   }).ScreenHeader({ title: 'Tasks / To-Do', fallbackHref: '/tasks' });
   assert.equal(header.props.options.title, 'Tasks / To-Do');
   assert.equal(header.props.options.headerBackVisible, false);
-  const back = header.props.options.headerLeft();
+  const back = header.props.options.headerLeft().props.children;
   assert.equal(back.props.accessibilityLabel, 'Back');
-  assert.equal(back.props.icon.props.children, '←');
-  assert.notEqual(back.props.icon.props.children, '← Back');
+  assert.equal(back.props.icon.type, 'SymbolView');
   back.props.onPress(); assert.equal(actions.pop(), 'back');
   canGoBack = false; back.props.onPress(); assert.equal(actions.pop(), '/tasks');
 });
@@ -65,12 +65,23 @@ test('Settings About navigation and developer information render safely across a
     'react/jsx-runtime': { jsx, jsxs: jsx },
     'expo-constants': { __esModule: true, default: { get expoConfig() { return config; } } },
     'expo-image': { Image: 'Image' },
+    'expo-symbols': { SymbolView: 'SymbolView' },
     'expo-router': { Stack: { Screen: 'Screen' }, router: {
       push: (route) => actions.push(route), replace: (route) => actions.push(route),
       back: () => actions.push('back'), canGoBack: () => canGoBack,
     } },
     'react-native': { Platform: platform, Pressable: 'Pressable', ScrollView: 'ScrollView', Text: 'Text', View: 'View' },
     'react-native-safe-area-context': { SafeAreaView: 'SafeAreaView' },
+    '@/components/ui/card': {
+      StandardCard: ({ children }) => jsx('View', { children }),
+      InteractiveCard: ({ accessibilityLabel, onPress, children }) => jsx('Pressable', { accessibilityLabel, onPress, children }),
+    },
+    '@/components/ui/screen-header': { ScreenHeader: ({ title, fallbackHref }) => jsx('Screen', { options: { title,
+      headerLeft: () => jsx('Pressable', { onPress: () => canGoBack ? actions.push('back') : actions.push(fallbackHref) }) } }) },
+    '@/components/ui/section': { Section: ({ title, children }) => jsx('View', { title, children }) },
+    '@/constants/design-system': { iconSizes: { card: 28, action: 20 }, layout: { screenContent: {} },
+      radii: { lg: 18, md: 14 }, spacing: { xs: 4, sm: 8, md: 12, base: 16 },
+      typography: { hero: {}, sectionHeading: {}, cardTitle: {}, body: {}, secondaryBody: {}, label: {}, caption: {} } },
     '@/assets/images/lifepilot-icon.png': 'existing-logo',
     '@/features/appearance/appearance-provider': { useAppearance: () => ({
       colors: resolved.colors, preference: 'lifepilot', custom: { base: 'dark', accent: 'emerald' }, saving: false,

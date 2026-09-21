@@ -1,4 +1,4 @@
-import { useThemedStyles, useAppearance } from '@/features/appearance/appearance-provider';
+import { useAppearance } from '@/features/appearance/appearance-provider';
 import { useRef, useState } from 'react';
 import { router } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
@@ -7,10 +7,8 @@ import {
   KeyboardAvoidingView,
   Keyboard,
   Platform,
-  Pressable,
   ScrollView,
   StatusBar,
-  StyleSheet,
   Text,
   View,
 } from 'react-native';
@@ -18,7 +16,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { FormTextField } from '@/components/forms/form-text-field';
 import { OptionSelector } from '@/components/forms/option-selector';
-import { lifePilotColors as colors } from '@/constants/lifepilot-theme';
+import { Button } from '@/components/ui/button';
+import { StandardCard } from '@/components/ui/card';
+import { ScreenHeader } from '@/components/ui/screen-header';
+import { Section } from '@/components/ui/section';
+import { layout, spacing, typography } from '@/constants/design-system';
 import { DuplicateRegistrationError } from '@/database/vehicles';
 import { SelectedPhotos } from '@/components/vehicles/selected-photos';
 import { createVehicleWithPhotos } from '@/features/vehicles/create-vehicle';
@@ -34,7 +36,6 @@ import {
 } from '@/features/vehicles/vehicle';
 
 export default function AddVehicleScreen() {
-  const themed_styles = useThemedStyles(styles);
   const appearance = useAppearance();
   const db = useSQLiteContext();
   const [form, setForm] = useState<VehicleForm>(initialVehicleForm);
@@ -118,25 +119,26 @@ export default function AddVehicleScreen() {
   }
 
   return (
-    <SafeAreaView edges={['left', 'right', 'bottom']} style={themed_styles.safeArea}>
+    <SafeAreaView edges={['left', 'right', 'bottom']} style={{ flex: 1, backgroundColor: appearance.colors.background }}>
+      <ScreenHeader title="Add Vehicle" fallbackHref="/vehicle-manager" />
       <StatusBar barStyle={appearance.isDark ? 'light-content' : 'dark-content'} backgroundColor={appearance.colors.background} />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={themed_styles.keyboardView}>
+        style={{ flex: 1 }}>
         <ScrollView
-          contentContainerStyle={themed_styles.content}
+          contentContainerStyle={layout.screenContent}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
           showsVerticalScrollIndicator={false}>
-          <View style={themed_styles.heading}>
-            <Text style={themed_styles.eyebrow}>MY GARAGE</Text>
-            <Text style={themed_styles.title}>Add Vehicle</Text>
-            <Text style={themed_styles.subtitle}>
+          <View style={{ gap: spacing.xs }}>
+            <Text style={[typography.label, { color: appearance.colors.primary, letterSpacing: 1.2 }]}>MY GARAGE</Text>
+            <Text accessibilityRole="header" style={[typography.screenTitle, { color: appearance.colors.text }]}>Add Vehicle</Text>
+            <Text style={[typography.body, { color: appearance.colors.muted }]}>
               Enter the basics now. You can add expenses and service details later.
             </Text>
           </View>
 
-          <View style={themed_styles.form}>
+          <StandardCard><Section title="Vehicle information" subtitle="Required details used throughout your garage.">
             <OptionSelector
               error={errors.vehicleType}
               label="Vehicle type"
@@ -200,57 +202,17 @@ export default function AddVehicleScreen() {
               placeholder="12500"
               value={form.odometerKm}
             />
-          </View>
+          </Section></StandardCard>
 
           <SelectedPhotos photos={photos} coverId={coverId} disabled={isSaving || isPicking}
             onPick={(camera) => { void selectPhotos(camera); }} onRemove={removePhoto}
             onCover={(id) => { if (!working.current && !created.current) setCoverId(id); }} />
 
-          {submitError && <Text style={themed_styles.submitError}>{submitError}</Text>}
+          {submitError && <Text accessibilityRole="alert" style={[typography.secondaryBody, { color: appearance.colors.danger }]}>{submitError}</Text>}
 
-          <Pressable
-            accessibilityRole="button"
-            accessibilityState={{ disabled: isSaving || isPicking }}
-            disabled={isSaving || isPicking}
-            onPress={handleSubmit}
-            style={({ pressed }) => [
-              themed_styles.saveButton,
-              pressed && themed_styles.saveButtonPressed,
-              isSaving && themed_styles.saveButtonDisabled,
-            ]}>
-            <Text style={themed_styles.saveButtonText}>{isSaving ? 'Saving…' : 'Save Vehicle'}</Text>
-          </Pressable>
+          <Button label="Save Vehicle" loading={isSaving} disabled={isSaving || isPicking} onPress={() => { void handleSubmit(); }} />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.background },
-  keyboardView: { flex: 1 },
-  content: { paddingHorizontal: 24, paddingTop: 24, paddingBottom: 40 },
-  heading: { marginBottom: 32 },
-  eyebrow: { color: colors.green, fontSize: 11, fontWeight: '800', letterSpacing: 1.6 },
-  title: {
-    color: colors.white,
-    fontSize: 34,
-    fontWeight: '800',
-    letterSpacing: -0.7,
-    marginTop: 8,
-  },
-  subtitle: { color: colors.muted, fontSize: 15, lineHeight: 23, marginTop: 10 },
-  form: { gap: 22 },
-  submitError: { color: '#FF9A9A', fontSize: 13, lineHeight: 20, marginTop: 20 },
-  saveButton: {
-    minHeight: 56,
-    borderRadius: 16,
-    backgroundColor: colors.green,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 32,
-  },
-  saveButtonPressed: { opacity: 0.8 },
-  saveButtonDisabled: { opacity: 0.55 },
-  saveButtonText: { color: colors.background, fontSize: 16, fontWeight: '800' },
-});

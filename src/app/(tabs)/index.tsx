@@ -1,199 +1,68 @@
-import { useThemedStyles, useAppearance } from '@/features/appearance/appearance-provider';
+import type { ComponentProps } from 'react';
 import { router } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { Pressable, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StatusBar, Text, View } from 'react-native';
 
-import { lifePilotColors as colors } from '@/constants/lifepilot-theme';
+import { IconButton } from '@/components/ui/button';
+import { InteractiveCard } from '@/components/ui/card';
+import { Section } from '@/components/ui/section';
+import { iconSizes, layout, radii, spacing, typography } from '@/constants/design-system';
+import { useAppearance } from '@/features/appearance/appearance-provider';
 
-export default function HomeScreen() {
-  const themed_styles = useThemedStyles(styles);
-  const appearance = useAppearance();
-  function openVehicleManager() {
-    if (__DEV__) {
-      console.debug('[Home] Vehicle Manager pressed -> /vehicle-manager');
-    }
-    router.push('/vehicle-manager');
-  }
+type ModuleIconName = ComponentProps<typeof SymbolView>['name'];
 
-  return (
-    <ScrollView style={{ backgroundColor: appearance.colors.background }} contentContainerStyle={themed_styles.container}>
-      <StatusBar barStyle={appearance.isDark ? 'light-content' : 'dark-content'} backgroundColor={appearance.colors.background} />
-
-      <View style={themed_styles.header}>
-        <Text style={themed_styles.title}>
-          Life<Text style={themed_styles.green}>Pilot</Text>
-        </Text>
-
-        <Text style={themed_styles.subtitle}>
-          Manage your vehicles and personal expenses in one place.
-        </Text>
-
-        <View style={themed_styles.accentLine} />
-        <Pressable accessibilityRole="button" accessibilityLabel="Settings and appearance" onPress={() => router.push('/settings')}
-          style={{ minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start' }}>
-          <Text style={{ color: appearance.colors.green, fontWeight: '700' }}>Settings</Text>
-        </Pressable>
-
-        <Text style={themed_styles.tagline}>
-          DRIVE SMART  •  SPEND WISE  •  LIVE BETTER
-        </Text>
-        
-      </View>
-
-      <View style={themed_styles.cards}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Tasks / To-Do" onPress={() => router.push('/tasks')}
-          style={({ pressed }) => [themed_styles.card, pressed && themed_styles.cardPressed]}>
-          <View style={themed_styles.iconBox}>
-            <SymbolView name={{ ios: 'checklist', android: 'checklist', web: 'checklist' }} size={26} tintColor={appearance.colors.green} />
-          </View>
-          <View style={themed_styles.cardContent}><Text style={themed_styles.cardTitle}>Tasks / To-Do</Text>
-            <Text style={themed_styles.cardText}>Plan your day, track tasks and get local reminders.</Text></View>
-          <Text style={themed_styles.arrow}>›</Text>
-        </Pressable>
-        <Pressable accessibilityRole="button" onPress={() => router.push('/reminders')}
-          style={({ pressed }) => [themed_styles.card, { minHeight: 72 }, pressed && themed_styles.cardPressed]}>
-          <View style={themed_styles.iconBox}>
-            <SymbolView name={{ ios: 'bell', android: 'notifications', web: 'notifications' }} size={26} tintColor={appearance.colors.green} />
-          </View>
-          <View style={themed_styles.cardContent}><Text style={themed_styles.cardTitle}>Vehicle Reminders</Text>
-            <Text style={themed_styles.cardText}>Insurance, PUC and service due dates.</Text></View>
-          <Text style={themed_styles.arrow}>›</Text>
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          onPress={openVehicleManager}
-          style={({ pressed }) => [themed_styles.card, pressed && themed_styles.cardPressed]}>
-          <View style={themed_styles.iconBox}>
-            <Text style={themed_styles.icon}>🚗</Text>
-          </View>
-
-          <View style={themed_styles.cardContent}>
-            <Text style={themed_styles.cardTitle}>Vehicle Manager</Text>
-            <Text style={themed_styles.cardText}>
-              Vehicles, service, fuel, documents, reminders and reports.
-            </Text>
-          </View>
-
-          <Text style={themed_styles.arrow}>›</Text>
-        </Pressable>
-
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Personal Expense Manager"
-          onPress={() => router.push('/personal')}
-          style={({ pressed }) => [themed_styles.card, pressed && themed_styles.cardPressed]}>
-          <View style={themed_styles.iconBox}>
-            <SymbolView name={{ ios: 'wallet.pass', android: 'account_balance_wallet', web: 'account_balance_wallet' }} size={26} tintColor={appearance.colors.green} />
-          </View>
-
-          <View style={themed_styles.cardContent}>
-            <Text style={themed_styles.cardTitle}>Personal Expense Manager</Text>
-            <Text style={themed_styles.cardText}>
-              Personal expenses, income, categories and transaction history.
-            </Text>
-          </View>
-          <Text style={themed_styles.arrow}>›</Text>
-        </Pressable>
-      </View>
-    </ScrollView>
-  );
+function ModuleIcon({ name }: { name: ModuleIconName }) {
+  const { colors } = useAppearance();
+  return <View accessible={false} style={{ width: 48, height: 48, borderRadius: radii.md,
+    backgroundColor: colors.surfaceSecondary, alignItems: 'center', justifyContent: 'center' }}>
+    <SymbolView name={name} size={iconSizes.card} tintColor={colors.primary} />
+  </View>;
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flexGrow: 1,
-    backgroundColor: colors.background,
-    paddingHorizontal: 24,
-    paddingVertical: 24,
-    justifyContent: 'center',
-  },
-  header: {
-    marginBottom: 44,
-  },
-  title: {
-    fontSize: 42,
-    fontWeight: '800',
-    color: colors.white,
-    letterSpacing: -1,
-  },
-  green: {
-    color: colors.green,
-  },
-  subtitle: {
-    color: colors.muted,
-    fontSize: 16,
-    lineHeight: 25,
-    marginTop: 12,
-  },
-  accentLine: {
-    width: 40,
-    height: 3,
-    borderRadius: 2,
-    backgroundColor: colors.green,
-    marginTop: 24,
-    marginBottom: 22,
-  },
-  tagline: {
-    color: colors.muted,
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 1.5,
-  },
-  cards: {
-    gap: 16,
-  },
-  card: {
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 22,
-    padding: 18,
-    flexDirection: 'row',
-    alignItems: 'center',
-    minHeight: 140,
-  },
-  cardPressed: {
-    opacity: 0.8,
-  },
-  comingSoon: {
-    color: colors.muted,
-    fontSize: 12,
-    fontWeight: '700',
-    marginTop: 8,
-  },
-  iconBox: {
-    flexShrink: 0,
-    width: 54,
-    height: 54,
-    borderRadius: 16,
-    backgroundColor: '#193D2C',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 14,
-  },
-  icon: {
-    fontSize: 26,
-    color: colors.green,
-  },
-  cardContent: {
-    flex: 1,
-    minWidth: 0,
-  },
-  cardTitle: {
-    color: colors.white,
-    fontSize: 17,
-    fontWeight: '700',
-    marginBottom: 8,
-  },
-  cardText: {
-    color: colors.muted,
-    fontSize: 12,
-    lineHeight: 19,
-  },
-  arrow: {
-    flexShrink: 0,
-    color: colors.green,
-    fontSize: 32,
-    marginLeft: 8,
-  },
-});
+function ModuleCard({ title, description, icon, onPress }: {
+  title: string; description: string; icon: ModuleIconName; onPress: () => void;
+}) {
+  const { colors } = useAppearance();
+  return <InteractiveCard accessibilityLabel={title} onPress={onPress} leading={<ModuleIcon name={icon} />}
+    style={{ minHeight: 96 }}>
+    <View style={{ gap: spacing.xs }}>
+      <Text style={[typography.cardTitle, { color: colors.text }]}>{title}</Text>
+      <Text style={[typography.secondaryBody, { color: colors.muted }]}>{description}</Text>
+    </View>
+  </InteractiveCard>;
+}
+
+export default function HomeScreen() {
+  const appearance = useAppearance();
+  const { colors } = appearance;
+
+  return <ScrollView style={{ backgroundColor: colors.background }}
+    contentContainerStyle={[layout.screenContent, { flexGrow: 1, paddingBottom: spacing.xl }]}>
+    <StatusBar barStyle={appearance.isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
+
+    <View style={{ gap: spacing.md, paddingTop: spacing.sm }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+        <Text accessibilityRole="header" style={[typography.hero, { color: colors.text, flex: 1, minWidth: 0 }]}>Life<Text style={{ color: colors.primary }}>Pilot</Text></Text>
+        <IconButton accessibilityLabel="Settings and appearance" onPress={() => router.push('/settings')}
+          icon={<SymbolView name={{ ios: 'gearshape', android: 'settings', web: 'settings' }}
+            size={iconSizes.navigation} tintColor={colors.primary} />} />
+      </View>
+      <Text style={[typography.body, { color: colors.muted, maxWidth: 520 }]}>Your vehicles, finances and daily plans in one calm workspace.</Text>
+      <View style={{ width: 40, height: 3, borderRadius: radii.pill, backgroundColor: colors.primary }} />
+      <Text style={[typography.caption, { color: colors.muted, letterSpacing: 1.2 }]}>DRIVE SMART  •  SPEND WISE  •  LIVE BETTER</Text>
+    </View>
+
+    <Section title="Overview" subtitle="Choose what you want to manage.">
+      <View style={{ gap: spacing.md }}>
+        <ModuleCard title="Vehicle Reminders" description="Insurance, PUC and service due dates."
+          icon={{ ios: 'bell', android: 'notifications', web: 'notifications' }} onPress={() => router.push('/reminders')} />
+        <ModuleCard title="Vehicle Manager" description="Vehicle details, photos, service and documents."
+          icon={{ ios: 'car', android: 'directions_car', web: 'directions_car' }} onPress={() => router.push('/vehicle-manager')} />
+        <ModuleCard title="Personal Expense Manager" description="Income, expenses, categories and transaction history."
+          icon={{ ios: 'wallet.pass', android: 'account_balance_wallet', web: 'account_balance_wallet' }} onPress={() => router.push('/personal')} />
+        <ModuleCard title="Tasks / To-Do" description="Plan your day, track tasks and use local reminders."
+          icon={{ ios: 'checklist', android: 'checklist', web: 'checklist' }} onPress={() => router.push('/tasks')} />
+      </View>
+    </Section>
+  </ScrollView>;
+}

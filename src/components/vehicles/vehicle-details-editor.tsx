@@ -1,18 +1,21 @@
-import { useThemedStyles } from '@/features/appearance/appearance-provider';
 import { useRef, useState } from 'react';
 import { router } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Keyboard, KeyboardAvoidingView, Platform, ScrollView, Text, View } from 'react-native';
 import { FormTextField } from '@/components/forms/form-text-field';
 import { OptionSelector } from '@/components/forms/option-selector';
-import { lifePilotColors as colors } from '@/constants/lifepilot-theme';
+import { Button } from '@/components/ui/button';
+import { StandardCard } from '@/components/ui/card';
+import { Section } from '@/components/ui/section';
+import { layout, spacing, typography } from '@/constants/design-system';
 import { DuplicateRegistrationError } from '@/database/vehicles';
+import { useAppearance } from '@/features/appearance/appearance-provider';
 import { saveVehicleDetails } from '@/features/vehicles/details-service';
 import { fuelTypes, type Vehicle } from '@/features/vehicles/vehicle';
 import { validateVehicleDetails, vehicleDetailSections, vehicleToDetailsForm, type VehicleDetailsErrors, type VehicleDetailsForm } from '@/features/vehicles/vehicle-details';
 
 export function VehicleDetailsEditor({ vehicle }: { vehicle: Vehicle }) {
-  const themed_styles = useThemedStyles(styles);
+  const { colors } = useAppearance();
   const db = useSQLiteContext();
   const [form, setForm] = useState(() => vehicleToDetailsForm(vehicle));
   const [errors, setErrors] = useState<VehicleDetailsErrors>({});
@@ -47,33 +50,27 @@ export function VehicleDetailsEditor({ vehicle }: { vehicle: Vehicle }) {
       scroll.current?.scrollTo({ y: 0, animated: true });
     } finally { working.current = false; setSaving(false); }
   }
-  return <KeyboardAvoidingView style={themed_styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={100}>
-    <ScrollView ref={scroll} contentContainerStyle={themed_styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
-      <Text style={themed_styles.intro}>Keep your vehicle information up to date. Optional fields can be left empty.</Text>
-      {submitError && <Text accessibilityRole="alert" style={themed_styles.error}>{submitError}</Text>}
-      {vehicleDetailSections.map((section) => <View key={section.title} style={themed_styles.section}>
-        <Text style={themed_styles.title}>{section.title}</Text>
-        {section.fields.map(({ key, label, optional, numeric, date }) => key === 'vehicleType'
-          ? <View key={key}><Text style={themed_styles.intro}>{label}</Text><Text style={themed_styles.readOnly}>{vehicle.vehicleType}</Text></View>
-          : key === 'fuelType' ? <OptionSelector key={key} label={label} options={fuelTypes} value={form.fuelType}
-            onChange={(value) => update('fuelType', value)} error={errors.fuelType} />
-            : <FormTextField key={key} label={label} optional={optional} value={form[key]} error={errors[key]}
-              editable={!saving} onChangeText={(value) => update(key, value)} multiline={key === 'notes'}
-              keyboardType={numeric ? key === 'modelYear' ? 'number-pad' : 'decimal-pad' : 'default'}
-              maxLength={key === 'modelYear' ? 4 : undefined} placeholder={date ? 'YYYY-MM-DD' : undefined}
-              autoCapitalize={key === 'registrationNumber' || key === 'chassisNumber' || key === 'engineNumber' ? 'characters' : 'sentences'} />)}
-      </View>)}
-      <Pressable accessibilityRole="button" accessibilityLabel="Save vehicle details" accessibilityState={{ disabled: saving }}
-        disabled={saving} onPress={() => { void save(); }} style={({ pressed }) => [themed_styles.save, (saving || pressed) && { opacity: 0.6 }]}>
-        <Text style={themed_styles.saveText}>{saving ? 'Saving…' : 'Save changes'}</Text>
-      </Pressable>
+  return <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={100}>
+    <ScrollView ref={scroll} contentContainerStyle={layout.screenContent} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
+      <Text style={[typography.secondaryBody, { color: colors.muted }]}>Keep your vehicle information up to date. Optional fields can be left empty.</Text>
+      {submitError && <Text accessibilityRole="alert" style={[typography.secondaryBody, { color: colors.danger }]}>{submitError}</Text>}
+      {vehicleDetailSections.map((section) => <StandardCard key={section.title}>
+        <Section title={section.title}>
+          {section.fields.map(({ key, label, optional, numeric, date }) => key === 'vehicleType'
+            ? <View key={key} style={{ gap: spacing.xs }}>
+              <Text style={[typography.label, { color: colors.text }]}>{label}</Text>
+              <Text style={[typography.body, { color: colors.muted }]}>{vehicle.vehicleType}</Text>
+            </View>
+            : key === 'fuelType' ? <OptionSelector key={key} label={label} options={fuelTypes} value={form.fuelType}
+              onChange={(value) => update('fuelType', value)} error={errors.fuelType} />
+              : <FormTextField key={key} label={label} optional={optional} value={form[key]} error={errors[key]}
+                editable={!saving} onChangeText={(value) => update(key, value)} multiline={key === 'notes'}
+                keyboardType={numeric ? key === 'modelYear' ? 'number-pad' : 'decimal-pad' : 'default'}
+                maxLength={key === 'modelYear' ? 4 : undefined} placeholder={date ? 'YYYY-MM-DD' : undefined}
+                autoCapitalize={key === 'registrationNumber' || key === 'chassisNumber' || key === 'engineNumber' ? 'characters' : 'sentences'} />)}
+        </Section>
+      </StandardCard>)}
+      <Button label="Save changes" loading={saving} disabled={saving} onPress={() => { void save(); }} />
     </ScrollView>
   </KeyboardAvoidingView>;
 }
-const styles = StyleSheet.create({
-  screen: { flex: 1 }, content: { padding: 20, paddingBottom: 48, gap: 28 }, section: { gap: 20 },
-  intro: { color: colors.muted, fontSize: 14, lineHeight: 22 }, title: { color: colors.white, fontSize: 20, fontWeight: '700' },
-  readOnly: { color: colors.white, fontSize: 16, paddingTop: 6 }, error: { color: '#FF9A9A', lineHeight: 23 },
-  save: { minHeight: 52, padding: 15, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.green, borderRadius: 16 },
-  saveText: { color: colors.background, fontSize: 16, fontWeight: '800' },
-});

@@ -1,53 +1,13 @@
-import { useThemedStyles, useAppearance } from '@/features/appearance/appearance-provider';
-import { StyleSheet, Text, TextInput, TextInputProps, View } from 'react-native';
+import type { TextInputProps } from 'react-native';
+import { FormInput } from '@/components/ui/form-controls';
 
-import { lifePilotColors as colors } from '@/constants/lifepilot-theme';
-
-type FormTextFieldProps = Pick<
-  TextInputProps,
-  'autoCapitalize' | 'keyboardType' | 'maxLength' | 'onChangeText' | 'placeholder' | 'value' | 'multiline' | 'editable'
-> & {
+type FormTextFieldProps = Pick<TextInputProps,
+  'autoCapitalize' | 'keyboardType' | 'maxLength' | 'onChangeText' | 'placeholder' | 'value' | 'multiline' | 'editable'> & {
   error?: string;
   label: string;
   optional?: boolean;
 };
 
-export function FormTextField({ error, label, optional, ...inputProps }: FormTextFieldProps) {
-  const themed_styles = useThemedStyles(styles);
-  const appearance = useAppearance();
-  return (
-    <View style={themed_styles.field}>
-      <Text style={themed_styles.label}>
-        {label}
-        {optional && <Text style={themed_styles.optional}> (optional)</Text>}
-      </Text>
-      <TextInput
-        accessibilityLabel={label}
-        {...inputProps}
-        keyboardAppearance={appearance.isDark ? 'dark' : 'light'}
-        selectionColor={appearance.colors.green}
-        placeholderTextColor={appearance.colors.muted}
-        style={[themed_styles.input, inputProps.multiline && { minHeight: 120, textAlignVertical: 'top', paddingTop: 14 }, error && themed_styles.inputError]}
-      />
-      {error && <Text style={themed_styles.error}>{error}</Text>}
-    </View>
-  );
+export function FormTextField(props: FormTextFieldProps) {
+  return <FormInput {...props} />;
 }
-
-const styles = StyleSheet.create({
-  field: { gap: 8 },
-  label: { color: colors.white, fontSize: 14, fontWeight: '700' },
-  optional: { color: colors.muted, fontWeight: '400' },
-  input: {
-    minHeight: 52,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 14,
-    backgroundColor: colors.card,
-    color: colors.white,
-    fontSize: 16,
-    paddingHorizontal: 16,
-  },
-  inputError: { borderColor: '#FF7A7A' },
-  error: { color: '#FF9A9A', fontSize: 12 },
-});

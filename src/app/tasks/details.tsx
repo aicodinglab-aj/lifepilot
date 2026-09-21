@@ -1,8 +1,10 @@
 import { useCallback, useRef, useState } from 'react';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { ActivityIndicator, Alert, ScrollView } from 'react-native';
-import { TaskAction, TaskCard, TaskMetadata, TaskPage, TaskText } from '@/components/tasks/task-ui';
+import { ActivityIndicator, Alert, ScrollView, Text, View } from 'react-native';
+import { TaskCard, TaskMetadata, TaskPage } from '@/components/tasks/task-ui';
+import { Button } from '@/components/ui/button';
+import { spacing, typography } from '@/constants/design-system';
 import { completeTask, deleteTask, getTask } from '@/database/tasks';
 import { taskId, type Task } from '@/features/tasks/task';
 import { useTaskNotifications } from '@/features/tasks/task-provider';
@@ -36,22 +38,24 @@ export default function TaskDetails() {
     } catch { if (token === generation.current) setError('Could not update task. Please try again.'); }
     finally { working.current = false; setBusy(false); }
   }
-  return <TaskPage title="Task Details"><ScrollView contentContainerStyle={{ padding: 24, gap: 18 }}>
+  return <TaskPage title="Task Details"><ScrollView contentContainerStyle={{ padding: spacing.base, paddingBottom: spacing.xl, gap: spacing.lg }}>
     {loading ? <ActivityIndicator color={colors.primary} /> : <>
-      {error && <><TaskText danger>{error}</TaskText><TaskAction label="Try again" onPress={() => setRetry((n) => n + 1)} /></>}
-      {!task ? !error && <TaskText>This task no longer exists.</TaskText> : <>
-        <TaskCard><TaskText heading>{task.title}</TaskText><TaskMetadata task={task} today={today} />
-          <TaskText>{task.description || 'No description'}</TaskText>
-          {!task.reminderEnabled && <TaskText>Reminder off</TaskText>}
-          <TaskText>Created {new Date(task.createdAt).toLocaleString()}</TaskText>
-          {task.completedAt && <TaskText>Completed {new Date(task.completedAt).toLocaleString()}</TaskText>}
+      {error && <><Text accessibilityRole="alert" style={[typography.secondaryBody, { color: colors.danger }]}>{error}</Text><Button label="Try again" variant="secondary" onPress={() => setRetry((n) => n + 1)} /></>}
+      {!task ? !error && <Text style={[typography.body, { color: colors.muted }]}>This task no longer exists.</Text> : <>
+        <TaskCard><Text accessibilityRole="header" style={[typography.screenTitle, { color: colors.text }]}>{task.title}</Text><TaskMetadata task={task} today={today} />
+          <Text style={[typography.body, { color: task.description ? colors.text : colors.muted }]}>{task.description || 'No description'}</Text>
+          {!task.reminderEnabled && <Text style={[typography.secondaryBody, { color: colors.muted }]}>Reminder off</Text>}
+          <Text style={[typography.caption, { color: colors.muted }]}>Created {new Date(task.createdAt).toLocaleString()}</Text>
+          {task.completedAt && <Text style={[typography.caption, { color: colors.muted }]}>Completed {new Date(task.completedAt).toLocaleString()}</Text>}
         </TaskCard>
-        {notifications.warning && <TaskText>{notifications.warning}</TaskText>}
-        <TaskAction label="Edit" disabled={busy} onPress={() => router.push({ pathname: '/tasks/edit', params: { id: String(task.id) } })} />
-        <TaskAction label={task.completed ? 'Reopen' : 'Mark Complete'} disabled={busy} onPress={() => { void perform(false); }} />
-        <TaskAction label="Delete" disabled={busy} onPress={() => Alert.alert('Delete task?', 'This permanently deletes this task.', [
-          { text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: () => { void perform(true); } },
-        ])} />
+        {notifications.warning && <Text style={[typography.caption, { color: colors.muted }]}>{notifications.warning}</Text>}
+        <View style={{ gap: spacing.sm }}>
+          <Button label={task.completed ? 'Reopen' : 'Mark Complete'} disabled={busy} onPress={() => { void perform(false); }} />
+          <Button label="Edit" variant="secondary" disabled={busy} onPress={() => router.push({ pathname: '/tasks/edit', params: { id: String(task.id) } })} />
+          <Button label="Delete" variant="tertiary" disabled={busy} onPress={() => Alert.alert('Delete task?', 'This permanently deletes this task.', [
+            { text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: () => { void perform(true); } },
+          ])} />
+        </View>
       </>}
     </>}
   </ScrollView></TaskPage>;

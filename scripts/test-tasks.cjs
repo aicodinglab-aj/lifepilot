@@ -185,7 +185,10 @@ async function main() {
     'react-native': { Pressable: 'Pressable', Text: 'Text', View: 'View' },
     'react-native-safe-area-context': { SafeAreaView: 'SafeAreaView' },
     'expo-router': { Stack: { Screen: 'Screen' }, router: { canGoBack: () => true, back: () => { wentBack = true; } } },
+    '@/components/ui/card': { StandardCard: ({ children }) => jsx('View', { children }) },
     '@/components/ui/screen-header': { ScreenHeader: ({ title }) => jsx('Screen', { options: { title, headerLeft: () => jsx('Pressable', { onPress: () => { wentBack = true; } }) } }) },
+    '@/components/ui/status': { StatusBadge: ({ label, tone = 'neutral' }) => jsx('View', { label, tone }) },
+    '@/constants/design-system': { spacing: { sm: 8 }, typography: { secondaryBody: {} } },
     '@/features/appearance/appearance-provider': { useAppearance: () => resolved },
   });
   for (const preference of ['lifepilot', 'light', 'system', 'custom']) {
@@ -195,7 +198,7 @@ async function main() {
       assert.equal(page.props.style.backgroundColor, resolved.colors.background);
       page.props.children[0].props.options.headerLeft().props.onPress(); assert.equal(wentBack, true);
       const metadata = ui.TaskMetadata({ task: { ...draft, dueDate: '2026-09-17', completed: 0 }, today });
-      assert.equal(metadata.props.children[0].props.style.color, resolved.colors.danger);
+      assert.equal(metadata.props.children[1].props.style[1].color, resolved.colors.danger);
       const action = ui.TaskAction({ label: 'Mark Complete', disabled: true, onPress: () => {} });
       assert.equal(action.props.accessibilityState.disabled, true);
     }

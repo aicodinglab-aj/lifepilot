@@ -1,8 +1,11 @@
 import Constants from 'expo-constants';
 import { Image } from 'expo-image';
-import { router, Stack } from 'expo-router';
-import { Platform, Pressable, ScrollView, Text, View } from 'react-native';
+import { Platform, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { StandardCard } from '@/components/ui/card';
+import { ScreenHeader } from '@/components/ui/screen-header';
+import { Section } from '@/components/ui/section';
+import { layout, spacing, typography } from '@/constants/design-system';
 import { useAppearance } from '@/features/appearance/appearance-provider';
 
 export default function AboutScreen() {
@@ -13,30 +16,25 @@ export default function AboutScreen() {
     : Platform.OS === 'ios' ? config?.ios?.buildNumber : undefined;
 
   return <SafeAreaView edges={['left', 'right', 'bottom']} style={{ flex: 1, backgroundColor: colors.background }}>
-    <Stack.Screen options={{ title: 'About LifePilot', headerBackVisible: false, headerLeft: () =>
-      <Pressable accessibilityRole="button" accessibilityLabel="Go back" style={{ minWidth: 64, minHeight: 44, justifyContent: 'center' }}
-        onPress={() => router.canGoBack() ? router.back() : router.replace('/settings')}>
-        <Text style={{ color: colors.primary, fontWeight: '700' }}>{'\u2190 Back'}</Text>
-      </Pressable> }} />
-    <ScrollView contentContainerStyle={{ flexGrow: 1, padding: 24, gap: 24 }}>
-      <View style={{ alignItems: 'center', gap: 14, paddingVertical: 16 }}>
+    <ScreenHeader title="About LifePilot" fallbackHref="/settings" />
+    <ScrollView contentContainerStyle={[layout.screenContent, { flexGrow: 1 }]}>
+      <View style={{ alignItems: 'center', gap: spacing.md, paddingVertical: spacing.base }}>
         <Image source={require('@/assets/images/lifepilot-icon.png')} accessibilityLabel="LifePilot LP and leaf logo"
           contentFit="contain" style={{ width: 128, height: 128, borderRadius: 24 }} />
-        <Text accessibilityRole="header" style={{ color: colors.text, fontSize: 30, fontWeight: '800' }}>LifePilot</Text>
-        <Text style={{ color: colors.muted, fontSize: 16, lineHeight: 24, textAlign: 'center' }}>
-          Your personal vehicle and expense companion.
-        </Text>
+        <Text accessibilityRole="header" style={[typography.hero, { color: colors.text }]}>LifePilot</Text>
+        <Text style={[typography.body, { color: colors.muted, textAlign: 'center' }]}>Your personal vehicle and expense companion.</Text>
       </View>
-      <View style={{ padding: 18, gap: 18, borderRadius: 18, borderWidth: 1, borderColor: colors.controlBorder, backgroundColor: colors.card }}>
-        <Text accessibilityRole="header" style={{ color: colors.text, fontSize: 19, fontWeight: '700' }}>App Information</Text>
-        <InfoRow label="Version" value={version} />
-        <InfoRow label="Build" value={build == null ? 'Not available' : String(build)} />
-      </View>
-      <View style={{ padding: 18, gap: 8, borderRadius: 18, borderWidth: 1, borderColor: colors.controlBorder, backgroundColor: colors.card }}>
-        <Text style={{ color: colors.muted, fontSize: 14 }}>Developed by</Text>
-        <Text style={{ color: colors.text, fontSize: 18, fontWeight: '600' }}>DMJ Labs</Text>
-      </View>
-      <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 18, textAlign: 'center', marginTop: 'auto', paddingTop: 12 }}>
+      <StandardCard>
+        <Section title="App Information">
+          <InfoRow label="Version" value={version} />
+          <InfoRow label="Build" value={build == null ? 'Not available' : String(build)} />
+        </Section>
+      </StandardCard>
+      <StandardCard>
+        <Text style={[typography.caption, { color: colors.muted }]}>DEVELOPED BY</Text>
+        <Text style={[typography.sectionHeading, { color: colors.text }]}>DMJ Labs</Text>
+      </StandardCard>
+      <Text style={[typography.caption, { color: colors.muted, textAlign: 'center', marginTop: 'auto', paddingTop: spacing.md }]}>
         © 2026 DMJ Labs. All rights reserved.
       </Text>
     </ScrollView>
@@ -45,8 +43,8 @@ export default function AboutScreen() {
 
 function InfoRow({ label, value }: { label: string; value: string }) {
   const { colors } = useAppearance();
-  return <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 12 }}>
-    <Text style={{ color: colors.muted, fontSize: 15 }}>{label}</Text>
-    <Text selectable style={{ color: colors.text, fontSize: 15, fontWeight: '600' }}>{value}</Text>
+  return <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: spacing.md }}>
+    <Text style={[typography.body, { color: colors.muted }]}>{label}</Text>
+    <Text selectable style={[typography.body, { color: colors.text, fontWeight: '600' }]}>{value}</Text>
   </View>;
 }

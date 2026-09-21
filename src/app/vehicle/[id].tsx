@@ -1,18 +1,23 @@
-import { useThemedStyles } from '@/features/appearance/appearance-provider';
 import { router, type Href } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { VehiclePage, vehiclePageStyles as shared } from '@/components/vehicles/vehicle-page';
+import { SymbolView, type SymbolViewProps } from 'expo-symbols';
+import { Pressable, Text, View } from 'react-native';
+import { VehicleMileageReminder } from '@/components/vehicles/mileage-reminder';
+import { VehiclePage } from '@/components/vehicles/vehicle-page';
 import { VehiclePhotoImage } from '@/components/vehicles/vehicle-photo-image';
-import { lifePilotColors as colors } from '@/constants/lifepilot-theme';
+import { InteractiveCard, StandardCard } from '@/components/ui/card';
+import { Section } from '@/components/ui/section';
+import { StatusBadge, type StatusTone } from '@/components/ui/status';
+import { iconSizes, radii, spacing, typography } from '@/constants/design-system';
+import { useAppearance } from '@/features/appearance/appearance-provider';
+import { coverageQuickStatus, serviceQuickStatus } from '@/features/vehicles/overview-summary';
+import { useOverviewSummary } from '@/features/vehicles/use-overview-summary';
 import { useVehicle } from '@/features/vehicles/use-vehicle';
 import { vehicleModules } from '@/features/vehicles/vehicle-modules';
-import { useOverviewSummary } from '@/features/vehicles/use-overview-summary';
-import { coverageQuickStatus, serviceQuickStatus } from '@/features/vehicles/overview-summary';
-import { VehicleMileageReminder } from '@/components/vehicles/mileage-reminder';
+
+type SymbolName = SymbolViewProps['name'];
 
 export default function VehicleOverviewScreen() {
-  const themed_styles = useThemedStyles(styles);
-  const themed_shared = useThemedStyles(shared);
+  const { colors } = useAppearance();
   const state = useVehicle();
   const { vehicleId } = state;
   const vehicle = state.vehicle?.id === vehicleId ? state.vehicle : null;
@@ -27,92 +32,111 @@ export default function VehicleOverviewScreen() {
     return record ? { pathname: '/vehicle/coverage-details', params: { ...params, kind, recordId: record.id } }
       : { pathname: '/vehicle/coverage-history', params: { ...params, kind } };
   };
+  const hasCover = !!vehicle?.coverPhotoId && !!vehicle.coverPhotoUri;
+
   return <VehiclePage title="My Vehicle" {...state} loading={state.loading && !vehicle} vehicleId={vehicle ? vehicleId : undefined}>
     {vehicle && <>
-      <View style={themed_styles.hero}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Open vehicle photos"
+      <StandardCard style={{ padding: 0, overflow: 'hidden' }}>
+        {hasCover && <Pressable accessibilityRole="button" accessibilityLabel="Open vehicle photos"
           onPress={() => router.push({ pathname: '/vehicle/photos', params })}>
-          <VehiclePhotoImage vehicleId={vehicleId} photoId={vehicle.coverPhotoId} uri={vehicle.coverPhotoUri} style={themed_styles.cover} />
-          <View pointerEvents="none" style={themed_styles.photoBadge}><Text style={themed_styles.photoBadgeText}>View photos ↗</Text></View>
-        </Pressable>
-        <View style={themed_styles.identity}>
-          <Text style={themed_shared.eyebrow}>YOUR VEHICLE</Text>
-          <Text style={themed_shared.title}>{vehicle.make} {vehicle.model}</Text>
-          <Text style={themed_styles.registration}>{vehicle.registrationNumber}</Text>
-          <View style={themed_styles.metrics}>
-            <Metric label="MODEL YEAR" value={String(vehicle.modelYear)} />
-            <Metric label="ODOMETER" value={`${vehicle.odometerKm.toLocaleString()} km`} />
-            <Metric label="FUEL TYPE" value={vehicle.fuelType} />
+          <VehiclePhotoImage vehicleId={vehicleId} photoId={vehicle.coverPhotoId} uri={vehicle.coverPhotoUri}
+            style={{ width: '100%', height: undefined, aspectRatio: 16 / 9, borderRadius: 0 }} />
+          <View pointerEvents="none" style={{ position: 'absolute', right: spacing.md, bottom: spacing.md,
+            borderRadius: radii.pill, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, backgroundColor: `${colors.background}DD` }}>
+            <Text style={[typography.caption, { color: colors.text, fontWeight: '700' }]}>View photos</Text>
+          </View>
+        </Pressable>}
+        <View style={{ padding: spacing.base, gap: spacing.md }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+            {!hasCover && <View style={{ width: 52, height: 52, borderRadius: radii.md, alignItems: 'center', justifyContent: 'center',
+              backgroundColor: colors.surfaceSecondary }}>
+              <SymbolView name={{ ios: 'car.fill', android: 'directions_car', web: 'directions_car' }}
+                size={iconSizes.card} tintColor={colors.primary} />
+            </View>}
+            <View style={{ flex: 1, minWidth: 0, gap: spacing.xs }}>
+              <Text style={[typography.label, { color: colors.primary, letterSpacing: 1.1 }]}>YOUR VEHICLE</Text>
+              <Text accessibilityRole="header" style={[typography.screenTitle, { color: colors.text }]}>{vehicle.make} {vehicle.model}</Text>
+              <Text style={[typography.label, { color: colors.primary }]}>{vehicle.registrationNumber}</Text>
+            </View>
+          </View>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
+            <StatusBadge label={`${vehicle.modelYear}`} />
+            <StatusBadge label={vehicle.vehicleType} />
+            <StatusBadge label={vehicle.fuelType} />
+            <StatusBadge label={`${vehicle.odometerKm.toLocaleString()} km`} />
           </View>
         </View>
-      </View>
-      <View style={themed_styles.section}>
-        <Text style={themed_shared.sectionTitle}>Quick Status</Text>
-        <View style={themed_styles.statusRow}>
-          <Status label="Next Service" {...service} href={{ pathname: '/vehicle/services', params }} />
-          <Status label="Insurance" {...status('insurance')} href={coverageHref('insurance')} />
-          <Status label="PUC / Pollution" {...status('puc')} href={coverageHref('puc')} />
+      </StandardCard>
+
+      <Section title="Quick Status" subtitle="Current service and compliance information.">
+        <View style={{ gap: spacing.md }}>
+          <QuickStatus label="Next Service" {...service} tone={serviceStatusTone(service.value, service.detail)}
+            href={{ pathname: '/vehicle/services', params }} icon={{ ios: 'wrench.and.screwdriver', android: 'build', web: 'build' }} />
+          <QuickStatus label="Insurance" {...status('insurance')} tone={coverageStatusTone(status('insurance').value)}
+            href={coverageHref('insurance')} icon={{ ios: 'shield', android: 'shield', web: 'shield' }} />
+          <QuickStatus label="PUC / Pollution" {...status('puc')} tone={coverageStatusTone(status('puc').value)}
+            href={coverageHref('puc')} icon={{ ios: 'checkmark.seal', android: 'verified', web: 'verified' }} />
+          <VehicleMileageReminder vehicleId={vehicleId} odometer={vehicle.odometerKm} />
         </View>
-        <VehicleMileageReminder vehicleId={vehicleId} odometer={vehicle.odometerKm} />
-      </View>
-      <View style={themed_styles.section}>
-        <Text style={themed_shared.sectionTitle}>Manage your vehicle</Text>
-        <NavigationCard icon="≡" title="Vehicle Details" subtitle="Model, chassis, engine, purchase info"
-          href={{ pathname: '/vehicle/details', params }} />
-        {Object.entries(vehicleModules).map(([module, item]) => <NavigationCard key={module}
-          icon={module === 'service' ? '⌁' : module === 'insurance' ? '◇' : 'ϟ'} {...item}
-          href={module === 'service' ? { pathname: '/vehicle/services', params } : module === 'insurance' ? { pathname: '/vehicle/insurance-puc', params } : { pathname: '/vehicle/module', params: { ...params, module } }} />)}
-        <NavigationCard icon="▧" title="Documents & Photos" subtitle="Bills, certificates and vehicle photos"
-          href={{ pathname: '/vehicle/photos', params }} />
-      </View>
+      </Section>
+
+      <Section title="Manage Vehicle" subtitle="Details, records, expenses and documents.">
+        <View style={{ gap: spacing.md }}>
+          <NavigationCard title="Vehicle Details" subtitle="Model, chassis, engine and purchase information"
+            icon={{ ios: 'list.bullet.rectangle', android: 'description', web: 'description' }}
+            href={{ pathname: '/vehicle/details', params }} />
+          {Object.entries(vehicleModules).map(([module, item]) => <NavigationCard key={module} {...item}
+            icon={module === 'service' ? { ios: 'wrench.and.screwdriver', android: 'build', web: 'build' }
+              : module === 'insurance' ? { ios: 'shield', android: 'shield', web: 'shield' }
+                : { ios: 'fuelpump', android: 'local_gas_station', web: 'local_gas_station' }}
+            href={module === 'service' ? { pathname: '/vehicle/services', params }
+              : module === 'insurance' ? { pathname: '/vehicle/insurance-puc', params }
+                : { pathname: '/vehicle/module', params: { ...params, module } }} />)}
+          <NavigationCard title="Documents & Photos" subtitle="Bills, certificates and vehicle photos"
+            icon={{ ios: 'photo.on.rectangle', android: 'photo_library', web: 'photo_library' }}
+            href={{ pathname: '/vehicle/photos', params }} />
+        </View>
+      </Section>
     </>}
   </VehiclePage>;
 }
 
-function Metric({ label, value }: { label: string; value: string }) {
-  const themed_styles = useThemedStyles(styles);
-  return <View style={themed_styles.metric}><Text style={themed_styles.metricLabel}>{label}</Text><Text style={themed_styles.metricValue}>{value}</Text></View>;
+function coverageStatusTone(value: string): StatusTone {
+  if (value === 'Valid') return 'success';
+  if (value === 'Expiring soon') return 'warning';
+  if (value === 'Expired') return 'danger';
+  return 'neutral';
 }
-function Status({ label, value, detail, href }: { label: string; value: string; detail?: string; href: Href }) {
-  const themed_styles = useThemedStyles(styles);
-  return <Pressable accessibilityRole="button" accessibilityLabel={`${label}: ${value}${detail ? `, ${detail}` : ''}`}
-    onPress={() => router.push(href)} style={({ pressed }) => [themed_styles.status, pressed && { opacity: 0.7 }]}>
-    <View style={themed_styles.statusMark} /><Text style={themed_styles.statusLabel}>{label}</Text>
-    <Text style={themed_styles.statusValue}>{value}</Text>
-    {detail && <Text style={themed_styles.statusValue}>{detail}</Text>}
-  </Pressable>;
+
+function serviceStatusTone(value: string, detail?: string): StatusTone {
+  if (detail?.includes('Overdue')) return 'danger';
+  if (detail?.includes('Due today') || detail?.includes('Due tomorrow')) return 'warning';
+  return value === 'Not scheduled' || value === 'Loading…' || value === 'Could not load' ? 'neutral' : 'success';
 }
-function NavigationCard({ icon, title, subtitle, href }: { icon: string; title: string; subtitle: string; href: Href }) {
-  const themed_styles = useThemedStyles(styles);
-  const themed_shared = useThemedStyles(shared);
-  return <Pressable accessibilityRole="button" accessibilityLabel={title} onPress={() => router.push(href)}
-    style={({ pressed }) => [themed_styles.navigationCard, pressed && { opacity: 0.7 }]}>
-    <View style={themed_styles.iconBox}><Text style={themed_styles.icon}>{icon}</Text></View>
-    <View style={themed_styles.navigationText}><Text style={themed_styles.navigationTitle}>{title}</Text><Text style={themed_shared.body}>{subtitle}</Text></View>
-    <Text style={themed_styles.chevron}>›</Text>
-  </Pressable>;
+
+function QuickStatus({ label, value, detail, tone, href, icon }: {
+  label: string; value: string; detail?: string; tone: StatusTone; href: Href; icon: SymbolName;
+}) {
+  const { colors } = useAppearance();
+  return <InteractiveCard accessibilityLabel={`${label}: ${value}${detail ? `, ${detail}` : ''}`}
+    onPress={() => router.push(href)} leading={<SymbolView name={icon} size={iconSizes.card} tintColor={colors.primary} />}
+    trailing={<SymbolView name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }}
+      size={iconSizes.action} tintColor={colors.primary} />}>
+    <View style={{ gap: spacing.sm }}>
+      <Text style={[typography.cardTitle, { color: colors.text }]}>{label}</Text>
+      <StatusBadge label={value} tone={tone} />
+      {detail && <Text style={[typography.caption, { color: colors.muted }]}>{detail}</Text>}
+    </View>
+  </InteractiveCard>;
 }
-const styles = StyleSheet.create({
-  hero: { borderRadius: 22, overflow: 'hidden', backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 },
-  cover: { height: 220, borderRadius: 0 },
-  photoBadge: { position: 'absolute', bottom: 12, right: 12, paddingVertical: 7, paddingHorizontal: 12, borderRadius: 20, backgroundColor: '#0B1110DD' },
-  photoBadgeText: { color: colors.white, fontSize: 12, fontWeight: '600' },
-  identity: { padding: 20, gap: 8 },
-  registration: { color: colors.green, fontSize: 15, fontWeight: '700', letterSpacing: 0.7 },
-  metrics: { flexDirection: 'row', gap: 12, marginTop: 12, paddingTop: 16, borderTopWidth: 1, borderTopColor: colors.border },
-  metric: { flex: 1, gap: 6 },
-  metricLabel: { color: colors.muted, fontSize: 9, letterSpacing: 0.8, fontWeight: '700' },
-  metricValue: { color: colors.white, fontSize: 14, fontWeight: '700' },
-  section: { gap: 14 },
-  statusRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  status: { flex: 1, minWidth: 90, padding: 13, gap: 9, borderRadius: 16, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.card },
-  statusMark: { width: 18, height: 3, borderRadius: 2, backgroundColor: colors.muted },
-  statusLabel: { color: colors.white, fontSize: 12, fontWeight: '600' },
-  statusValue: { color: colors.muted, fontSize: 12, lineHeight: 18 },
-  navigationCard: { minHeight: 88, flexDirection: 'row', alignItems: 'center', padding: 16, gap: 14, borderRadius: 18, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border },
-  iconBox: { width: 42, height: 44, backgroundColor: '#193D2C', borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
-  icon: { fontSize: 25, color: colors.green },
-  navigationText: { flex: 1, gap: 4 },
-  navigationTitle: { color: colors.white, fontSize: 16, fontWeight: '700' },
-  chevron: { color: colors.green, fontSize: 26 },
-});
+
+function NavigationCard({ title, subtitle, href, icon }: { title: string; subtitle: string; href: Href; icon: SymbolName }) {
+  const { colors } = useAppearance();
+  return <InteractiveCard accessibilityLabel={title} onPress={() => router.push(href)}
+    leading={<SymbolView name={icon} size={iconSizes.card} tintColor={colors.primary} />}
+    trailing={<SymbolView name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }}
+      size={iconSizes.action} tintColor={colors.primary} />}>
+    <Text style={[typography.cardTitle, { color: colors.text }]}>{title}</Text>
+    <Text style={[typography.secondaryBody, { color: colors.muted }]}>{subtitle}</Text>
+  </InteractiveCard>;
+}

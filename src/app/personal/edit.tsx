@@ -1,22 +1,26 @@
-import { useThemedStyles } from '@/features/appearance/appearance-provider';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { Alert, Keyboard, Text, View } from 'react-native';
-import { Action, PersonalPage, styles } from '@/components/personal/ui';
-import { FormTextField } from '@/components/forms/form-text-field';
-import { OptionSelector } from '@/components/forms/option-selector';
+import { PersonalPage } from '@/components/personal/ui';
+import { Button } from '@/components/ui/button';
+import { StandardCard, StatusCard } from '@/components/ui/card';
+import { Chip } from '@/components/ui/chip';
+import { FieldLabel, FormInput } from '@/components/ui/form-controls';
+import { Section } from '@/components/ui/section';
+import { spacing, typography } from '@/constants/design-system';
 import { getCategories, getTransaction, saveTransaction } from '@/database/personal';
+import { useAppearance } from '@/features/appearance/appearance-provider';
 import { localToday } from '@/features/personal/date';
-import { moneyInput } from '@/features/personal/money';
-import { PAYMENT_METHODS, validateTransaction, type Category, type TransactionInput } from '@/features/personal/transaction';
-import { createSaveFlow } from '@/features/personal/save-flow';
 import { personalDiagnostic } from '@/features/personal/diagnostics';
+import { moneyInput } from '@/features/personal/money';
+import { createSaveFlow } from '@/features/personal/save-flow';
+import { PAYMENT_METHODS, validateTransaction, type Category, type TransactionInput } from '@/features/personal/transaction';
 
 export { PersonalErrorBoundary as ErrorBoundary } from '@/components/personal/error-boundary';
 
 export default function TransactionEditor() {
-  const themed_styles = useThemedStyles(styles);
+  const { colors } = useAppearance();
   const { id } = useLocalSearchParams<{ id?: string }>(), db = useSQLiteContext();
   const [categories, setCategories] = useState<Category[]>([]), [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null), [attempt, setAttempt] = useState(0);
@@ -52,8 +56,6 @@ export default function TransactionEditor() {
         (savedId) => {
           if (!focused.current) return;
           Keyboard.dismiss();
-          // Return to the dashboard/history/details that opened this editor.
-          // A directly opened editor has a deterministic fallback using a string param.
           if (router.canGoBack()) router.back();
           else router.replace({ pathname: '/personal/transaction', params: { id: savedId } });
         },
@@ -66,21 +68,49 @@ export default function TransactionEditor() {
     finally { working.current = false; if (focused.current) setBusy(false); }
   }
   const available = categories.filter((category) => category.type === draft.type);
-  return <PersonalPage title={id === undefined ? 'Add Transaction' : 'Edit Transaction'} loading={loading} error={error} retry={() => { setLoading(true); setError(null); setAttempt((value) => value + 1); }}>
-    {saved && <View style={themed_styles.card}><Text style={themed_styles.heading}>Transaction saved</Text>
-      <Text style={themed_styles.body}>Continue to leave this screen. Your transaction will not be saved again.</Text>
-      <Action label="Continue" disabled={busy} onPress={() => { void save(); }} /></View>}
-    <View style={{ gap: 20 }} pointerEvents={busy || saved ? 'none' : 'auto'}>
-      <Text style={themed_styles.title}>{id === undefined ? 'Add Transaction' : 'Edit Transaction'}</Text>
-      <OptionSelector label="Type *" options={['Expense', 'Income']} value={draft.type === 'income' ? 'Income' : 'Expense'} onChange={(value) => setDraft((current) => ({ ...current, type: value.toLowerCase(), categoryId: '' }))} />
-      <FormTextField label="Amount (₹) *" value={draft.amount} onChangeText={(value) => field('amount', value)} keyboardType="decimal-pad" placeholder="1250.50" maxLength={20} editable={!busy} />
-      <OptionSelector label="Category *" options={available.map((category) => category.name)} value={available.find((category) => category.id === draft.categoryId)?.name ?? ''}
-        onChange={(value) => field('categoryId', available.find((category) => category.name === value)?.id ?? '')} />
-      <FormTextField label="Date *" value={draft.transactionDate} onChangeText={(value) => field('transactionDate', value)} placeholder="YYYY-MM-DD" maxLength={10} editable={!busy} />
-      <FormTextField label="Description" optional value={draft.description} onChangeText={(value) => field('description', value)} maxLength={200} editable={!busy} />
-      <OptionSelector label="Payment Method (optional)" options={['Not added', ...PAYMENT_METHODS]} value={draft.paymentMethod || 'Not added'} onChange={(value) => field('paymentMethod', value === 'Not added' ? '' : value)} />
-      <FormTextField label="Notes" optional multiline value={draft.notes} onChangeText={(value) => field('notes', value)} maxLength={2000} editable={!busy} />
-      <Action label={saved ? 'Saved' : busy ? 'Saving…' : 'Save Transaction'} disabled={busy || saved} onPress={() => { void save(); }} />
+  return <PersonalPage title={id === undefined ? 'Add Transaction' : 'Edit Transaction'} loading={loading} error={error}
+    retry={() => { setLoading(true); setError(null); setAttempt((value) => value + 1); }}>
+    {saved && <StatusCard tone="success">
+      <Text style={[typography.cardTitle, { color: colors.success }]}>Transaction saved</Text>
+      <Text style={[typography.secondaryBody, { color: colors.muted }]}>Continue to leave this screen. Your transaction will not be saved again.</Text>
+      <Button label="Continue" variant="secondary" disabled={busy} onPress={() => { void save(); }} />
+    </StatusCard>}
+    <View style={{ gap: spacing.lg }} pointerEvents={busy || saved ? 'none' : 'auto'}>
+      <StandardCard>
+        <Section title="Transaction" subtitle="Choose the type and enter the amount.">
+          <FieldLabel>Type *</FieldLabel>
+          <View accessibilityRole="radiogroup" style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
+            {(['Expense', 'Income'] as const).map((value) => <Chip key={value} label={value}
+              selected={draft.type === value.toLowerCase()} disabled={busy}
+              onPress={() => setDraft((current) => ({ ...current, type: value.toLowerCase(), categoryId: '' }))} />)}
+          </View>
+          <FormInput label="Amount (₹) *" value={draft.amount} onChangeText={(value) => field('amount', value)}
+            keyboardType="decimal-pad" placeholder="1250.50" maxLength={20} editable={!busy} />
+          <FieldLabel>Category *</FieldLabel>
+          <View accessibilityRole="radiogroup" style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
+            {available.map((category) => <Chip key={category.id} label={category.name} selected={draft.categoryId === category.id}
+              disabled={busy} onPress={() => field('categoryId', category.id)} />)}
+          </View>
+        </Section>
+      </StandardCard>
+
+      <StandardCard>
+        <Section title="Details" subtitle="Add the date and any useful context.">
+          <FormInput label="Date *" value={draft.transactionDate} onChangeText={(value) => field('transactionDate', value)}
+            placeholder="YYYY-MM-DD" maxLength={10} editable={!busy} />
+          <FormInput label="Description" optional value={draft.description} onChangeText={(value) => field('description', value)}
+            maxLength={200} editable={!busy} />
+          <FieldLabel optional>Payment Method</FieldLabel>
+          <View accessibilityRole="radiogroup" style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
+            {['Not added', ...PAYMENT_METHODS].map((value) => <Chip key={value} label={value}
+              selected={(draft.paymentMethod || 'Not added') === value} disabled={busy}
+              onPress={() => field('paymentMethod', value === 'Not added' ? '' : value)} />)}
+          </View>
+          <FormInput label="Notes" optional multiline value={draft.notes} onChangeText={(value) => field('notes', value)}
+            maxLength={2000} editable={!busy} />
+        </Section>
+      </StandardCard>
+      <Button label={saved ? 'Saved' : 'Save Transaction'} loading={busy} disabled={busy || saved} onPress={() => { void save(); }} />
     </View>
   </PersonalPage>;
 }

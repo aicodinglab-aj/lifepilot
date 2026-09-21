@@ -1,13 +1,25 @@
 import { useCallback, useRef, useState } from 'react';
 import { router, useFocusEffect } from 'expo-router';
+import { SymbolView } from 'expo-symbols';
 import { useSQLiteContext } from 'expo-sqlite';
-import { ActivityIndicator, FlatList, Pressable, View } from 'react-native';
-import { TaskAction, TaskCard, TaskMetadata, TaskPage, TaskText } from '@/components/tasks/task-ui';
+import { ActivityIndicator, FlatList, Pressable, Text, View } from 'react-native';
+import { Button } from '@/components/ui/button';
+import { StandardCard } from '@/components/ui/card';
+import { Chip } from '@/components/ui/chip';
+import { EmptyState } from '@/components/ui/empty-state';
+import { Section } from '@/components/ui/section';
+import { TaskMetadata, TaskPage } from '@/components/tasks/task-ui';
+import { iconSizes, spacing, typography } from '@/constants/design-system';
 import { completeTask, getTaskCategories, getTasks, getTaskSummary, TASK_PAGE_SIZE } from '@/database/tasks';
-import { priorities, taskViews, type Task, type TaskView, type Priority } from '@/features/tasks/task';
+import { priorities, type Task, type TaskView, type Priority } from '@/features/tasks/task';
 import { useCoverageToday } from '@/features/vehicles/use-coverage';
 import { useTaskNotifications } from '@/features/tasks/task-provider';
 import { useAppearance } from '@/features/appearance/appearance-provider';
+
+const primaryViews: { label: string; value: TaskView }[] = [
+  { label: 'Today', value: 'Today' }, { label: 'Upcoming', value: 'Upcoming' }, { label: 'All', value: 'All open' },
+];
+const secondaryViews: TaskView[] = ['Overdue', 'No due date', 'Completed'];
 
 export default function TasksScreen() {
   const db = useSQLiteContext(), today = useCoverageToday(), { colors } = useAppearance();
@@ -15,6 +27,7 @@ export default function TasksScreen() {
   const [view, setView] = useState<TaskView>('Today');
   const [category, setCategory] = useState<string>();
   const [priority, setPriority] = useState<Priority>();
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [rows, setRows] = useState<Task[]>([]);
   const [summary, setSummary] = useState<Awaited<ReturnType<typeof getTaskSummary>>>(null);
@@ -48,45 +61,86 @@ export default function TasksScreen() {
     catch { if (token === generation.current) setError('Could not update task. Please try again.'); }
     finally { working.current = false; setBusy(false); }
   }
+  const categoryName = categories.find((item) => item.id === category)?.name;
+  const activeFilters = [!primaryViews.some((item) => item.value === view) ? view : null, categoryName, priority ? `${priority} priority` : null]
+    .filter((value): value is string => !!value);
+  const resetFilters = () => { setView('Today'); setCategory(undefined); setPriority(undefined); };
+  const addTask = () => router.push('/tasks/edit');
+  const addTaskIcon = <Text accessible={false} style={{ color: colors.onPrimary, fontSize: 20 }}>+</Text>;
+
   return <TaskPage title="Tasks / To-Do">
-    <FlatList data={loading ? [] : rows} keyExtractor={(task) => String(task.id)} contentContainerStyle={{ padding: 24, gap: 14 }}
-      ListHeaderComponent={<View style={{ gap: 16 }}>
-        <TaskText heading>Tasks / To-Do</TaskText>
-        <TaskAction label="Add Task" onPress={() => router.push('/tasks/edit')} />
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-          {(['Today', 'Upcoming', 'Completed', 'Overdue'] as const).map((name) => <TaskAction key={name}
-            label={`${name}: ${summary?.[name.toLowerCase() as keyof NonNullable<typeof summary>] ?? '…'}`} selected={view === name} onPress={() => setView(name)} />)}
+    <FlatList data={loading ? [] : rows} keyExtractor={(task) => String(task.id)}
+      contentContainerStyle={{ flexGrow: 1, padding: spacing.base, paddingBottom: spacing.xl, gap: spacing.md }}
+      ListHeaderComponent={<View style={{ gap: spacing.base }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text accessibilityRole="header" style={[typography.screenTitle, { color: colors.text }]}>Your tasks</Text>
+            <Text style={[typography.secondaryBody, { color: colors.muted }]}>Focus on what needs attention now.</Text>
+          </View>
+          <Button label="Add Task" onPress={addTask} icon={addTaskIcon} />
         </View>
-        <TaskText heading>View</TaskText>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>{taskViews.filter((name) => name === 'No due date' || name === 'All open').map((name) =>
-          <TaskAction key={name} label={name} selected={view === name} onPress={() => setView(name)} />)}</View>
-        <TaskText>Category</TaskText>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-          <TaskAction label="All categories" selected={!category} onPress={() => setCategory(undefined)} />
-          {categories.map((group) => <TaskAction key={group.id} label={group.name} selected={category === group.id} onPress={() => setCategory(group.id)} />)}
+
+        <View accessibilityRole="tablist" style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
+          {primaryViews.map((item) => <Chip key={item.value}
+            label={`${item.label}${item.value !== 'All open' ? ` ${summary?.[item.value.toLowerCase() as 'today' | 'upcoming'] ?? '…'}` : ''}`}
+            selected={view === item.value} onPress={() => setView(item.value)} />)}
         </View>
-        <TaskText>Priority</TaskText>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-          <TaskAction label="All priorities" selected={!priority} onPress={() => setPriority(undefined)} />
-          {priorities.map((item) => <TaskAction key={item} label={item} selected={priority === item} onPress={() => setPriority(item)} />)}
+
+        <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing.sm }}>
+          <Button label={filtersOpen ? 'Hide filters' : 'Filters'} variant="secondary" onPress={() => setFiltersOpen((open) => !open)}
+            icon={<SymbolView name={{ ios: 'line.3.horizontal.decrease', android: 'filter_list', web: 'filter_list' }}
+              size={iconSizes.action} tintColor={colors.primary} />} />
+          {activeFilters.map((filter) => <View key={filter} style={{ maxWidth: '100%' }}><Chip label={filter} selected onPress={() => setFiltersOpen(true)} /></View>)}
+          {!!activeFilters.length && <Button label="Reset" variant="tertiary" onPress={resetFilters} />}
         </View>
-        {notifications.warning && <TaskText>{notifications.warning}</TaskText>}
-        <TaskAction label="Enable / retry task notifications" onPress={() => { void notifications.request(); }} />
-        <TaskText>After denial, allow notifications in device Settings. Reminders need a due date and time.</TaskText>
-        {error && <><TaskText danger>{error}</TaskText><TaskAction label="Try again" onPress={() => { void load(); }} /></>}
-        {loading && <ActivityIndicator color={colors.primary} accessibilityLabel="Loading tasks" />}
+
+        {filtersOpen && <StandardCard>
+          <Section title="Filter tasks" subtitle="Choose a view, category or priority.">
+            <View style={{ gap: spacing.md }}>
+              <Text style={[typography.label, { color: colors.text }]}>More views</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
+                {secondaryViews.map((item) => <Chip key={item} label={item} selected={view === item} onPress={() => setView(item)} />)}
+              </View>
+              <Text style={[typography.label, { color: colors.text }]}>Category</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
+                <Chip label="All categories" selected={!category} onPress={() => setCategory(undefined)} />
+                {categories.map((item) => <Chip key={item.id} label={item.name} selected={category === item.id} onPress={() => setCategory(item.id)} />)}
+              </View>
+              <Text style={[typography.label, { color: colors.text }]}>Priority</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
+                <Chip label="All priorities" selected={!priority} onPress={() => setPriority(undefined)} />
+                {priorities.map((item) => <Chip key={item} label={item} selected={priority === item} onPress={() => setPriority(item)} />)}
+              </View>
+              <Button label="Reset filters" variant="tertiary" onPress={resetFilters} />
+            </View>
+          </Section>
+        </StandardCard>}
+
+        <View style={{ minHeight: 24, justifyContent: 'center' }}>
+          {error && <Text accessibilityRole="alert" style={[typography.secondaryBody, { color: colors.danger }]}>{error}</Text>}
+          {loading && <ActivityIndicator color={colors.primary} accessibilityLabel="Loading tasks" />}
+        </View>
       </View>}
-      ListEmptyComponent={!loading && !error ? <TaskCard><TaskText heading>No tasks in this view</TaskText>
-        <TaskText>Add a task or choose another view. Tasks without dates are in No due date.</TaskText></TaskCard> : null}
-      ListFooterComponent={!loading && more ? <TaskAction label={paging ? 'Loading…' : 'Load more'} disabled={paging || busy}
-        onPress={() => { void loadMore(); }} /> : null}
-      renderItem={({ item }) => <TaskCard>
+      ListEmptyComponent={!loading && !error ? <EmptyState
+        title="No tasks in this view" description="Try another view or add a task when you are ready."
+        action={{ label: 'Add Task', icon: addTaskIcon, onPress: addTask }} /> : null}
+      ListFooterComponent={<View style={{ gap: spacing.sm, paddingTop: spacing.sm }}>
+        {error && <Button label="Try again" variant="secondary" onPress={() => { void load(); }} />}
+        {!loading && more && <Button label={paging ? 'Loading…' : 'Load more'} variant="secondary" loading={paging}
+          disabled={busy} onPress={() => { void loadMore(); }} />}
+        {notifications.warning && <Text style={[typography.caption, { color: colors.muted }]}>{notifications.warning}</Text>}
+        <Button label="Notification options" variant="tertiary" onPress={() => { void notifications.request(); }} />
+      </View>}
+      renderItem={({ item }) => <StandardCard>
         <Pressable accessibilityRole="button" accessibilityLabel={`Open task ${item.title}`}
-          onPress={() => router.push({ pathname: '/tasks/details', params: { id: String(item.id) } })} style={{ gap: 10, minHeight: 44 }}>
-          <TaskText heading>{item.title}</TaskText><TaskMetadata task={item} today={today} />
+          onPress={() => router.push({ pathname: '/tasks/details', params: { id: String(item.id) } })}
+          style={({ pressed }) => ({ gap: spacing.sm, minHeight: 44, opacity: pressed ? 0.68 : 1 })}>
+          <Text style={[typography.cardTitle, { color: item.completed ? colors.muted : colors.text,
+            textDecorationLine: item.completed ? 'line-through' : 'none' }]}>{item.title}</Text>
+          <TaskMetadata task={item} today={today} />
         </Pressable>
-        <TaskAction label={`${item.completed ? 'Reopen' : 'Mark complete'}: ${item.title}`} disabled={busy}
+        <Button label={item.completed ? 'Reopen' : 'Complete'} variant="tertiary" disabled={busy}
           onPress={() => { void toggle(item); }} />
-      </TaskCard>} />
+      </StandardCard>} />
   </TaskPage>;
 }

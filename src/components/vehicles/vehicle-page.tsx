@@ -1,25 +1,24 @@
 import { useThemedStyles, useAppearance } from '@/features/appearance/appearance-provider';
 import type { ReactNode } from 'react';
-import { router, Stack } from 'expo-router';
+import { router } from 'expo-router';
+import { SymbolView } from 'expo-symbols';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScreenHeader } from '@/components/ui/screen-header';
+import { iconSizes, typography } from '@/constants/design-system';
 import { lifePilotColors as colors } from '@/constants/lifepilot-theme';
 
 export function VehicleHeader({ title, vehicleId, action }: {
   title: string; vehicleId?: number; action?: { label: string; onPress: () => void };
 }) {
-  const themed_styles = useThemedStyles(styles);
-  return <Stack.Screen options={{ title, headerBackVisible: false,
-    headerLeft: () => <Pressable accessibilityRole="button" accessibilityLabel="Go back"
-      onPress={() => router.canGoBack() ? router.back() : router.replace('/vehicle-manager')} style={themed_styles.headerButton}>
-      <Text style={themed_styles.headerIcon}>{'\u2190'}</Text>
-    </Pressable>,
-    headerRight: () => action ? <Pressable accessibilityRole="button" accessibilityLabel={action.label}
-      onPress={action.onPress} style={themed_styles.headerButton}><Text style={themed_styles.accent}>{action.label}</Text></Pressable>
-      : vehicleId ? <Pressable accessibilityRole="button" accessibilityLabel="Vehicle settings" style={themed_styles.headerButton}
-        onPress={() => router.push({ pathname: '/vehicle/manage', params: { id: String(vehicleId) } })}>
-        <Text style={themed_styles.headerIcon}>{'\u2699'}</Text></Pressable> : null,
-  }} />;
+  const { colors: themeColors } = useAppearance();
+  const rightAction = action ? { accessibilityLabel: action.label, onPress: action.onPress,
+    icon: <Text style={[typography.label, { color: themeColors.primary }]}>{action.label}</Text> }
+    : vehicleId ? { accessibilityLabel: 'Vehicle settings',
+      onPress: () => router.push({ pathname: '/vehicle/manage', params: { id: String(vehicleId) } }),
+      icon: <SymbolView name={{ ios: 'gearshape', android: 'settings', web: 'settings' }}
+        size={iconSizes.navigation} tintColor={themeColors.primary} /> } : undefined;
+  return <ScreenHeader title={title} fallbackHref="/vehicle-manager" rightAction={rightAction} />;
 }
 
 export function VehiclePage({ title, vehicleId, action, loading, error, reload, children }: {
@@ -53,8 +52,6 @@ const styles = StyleSheet.create({
   ...vehiclePageStyles,
   screen: { flex: 1, backgroundColor: colors.background },
   content: { padding: 20, paddingBottom: 40, gap: 24 },
-  headerButton: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center', marginRight: 8 },
-  headerIcon: { color: colors.green, fontSize: 27 },
   accent: { color: colors.green, fontWeight: '700', fontSize: 15 },
   button: { minHeight: 44, justifyContent: 'center' },
 });

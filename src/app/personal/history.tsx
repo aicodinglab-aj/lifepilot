@@ -5,6 +5,8 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { Alert, FlatList, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Action, LoadState, PersonalHeader, TransactionCard, styles } from '@/components/personal/ui';
+import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/ui/empty-state';
 import { OptionSelector } from '@/components/forms/option-selector';
 import { FormTextField } from '@/components/forms/form-text-field';
 import { getTransactions, type HistoryFilter } from '@/database/personal';
@@ -40,7 +42,7 @@ function History({ initialFilter }: { initialFilter: HistoryFilter }) {
       renderItem={({ item }) => <TransactionCard transaction={item} />}
       ListHeaderComponent={<View style={{ gap: 18 }}>
         <Text style={themed_styles.title}>Transactions</Text>
-        <Action label="Add Transaction" onPress={() => router.push('/personal/edit')} />
+        <Button label="Add Transaction" onPress={() => router.push('/personal/edit')} />
         <OptionSelector label="Transaction type" options={['All', 'Expenses', 'Income']}
           value={filter.type === 'expense' ? 'Expenses' : filter.type === 'income' ? 'Income' : 'All'}
           onChange={(value) => changeFilter({ ...filter, categoryId: undefined, type: value === 'Expenses' ? 'expense' : value === 'Income' ? 'income' : undefined })} />
@@ -55,7 +57,8 @@ function History({ initialFilter }: { initialFilter: HistoryFilter }) {
         <Text style={themed_styles.body}>{filter.month || 'All dates'} · Page {pages.length}</Text>
         <LoadState loading={state.loading} error={state.error} retry={state.retry} />
       </View>}
-      ListEmptyComponent={!state.loading && !state.error ? <View style={themed_styles.card}><Text style={themed_styles.heading}>No transactions found</Text><Text style={themed_styles.body}>Add a transaction or try another filter.</Text></View> : null}
+      ListEmptyComponent={!state.loading && !state.error ? <EmptyState title="No transactions found"
+        description="Add a transaction or try another filter." action={{ label: 'Add Transaction', onPress: () => router.push('/personal/edit') }} /> : null}
       ListFooterComponent={<View style={{ gap: 12 }}>
         {pages.length > 1 && <Action label="Previous page" disabled={state.loading} onPress={() => setPages((current) => current.slice(0, -1))} />}
         {!state.error && state.data?.hasMore && <Action label="Next page" disabled={state.loading} onPress={() => {

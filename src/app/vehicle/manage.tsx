@@ -4,6 +4,7 @@ import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScreenHeader } from '@/components/ui/screen-header';
 import { lifePilotColors as colors } from '@/constants/lifepilot-theme';
 import { getVehicles } from '@/database/vehicles';
 import { deleteVehicle } from '@/features/vehicles/delete-vehicle';
@@ -57,7 +58,8 @@ export default function ManageVehicleScreen() {
       ], { cancelable: true, onDismiss: () => { working.current = false; } });
   }
 
-  return <SafeAreaView edges={['bottom']} style={themed_styles.screen}>
+  return <SafeAreaView edges={['left', 'right', 'bottom']} style={themed_styles.screen}>
+    <ScreenHeader title="Manage Vehicle" fallbackHref={{ pathname: '/vehicle/[id]', params: { id: String(vehicleId) } }} />
     {loading ? <ActivityIndicator color={appearance.colors.green} /> : <>
       {vehicle && <View style={themed_styles.identity}>
         <Text style={themed_styles.title}>{vehicle.make} {vehicle.model}</Text>

@@ -1,6 +1,6 @@
 import { AppearanceProvider, useThemedStyles, useAppearance } from '@/features/appearance/appearance-provider';
 import { useState } from 'react';
-import { DarkTheme, DefaultTheme, router, Stack, ThemeProvider } from 'expo-router';
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { SQLiteProvider } from 'expo-sqlite';
 import { Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
@@ -52,7 +52,6 @@ function RootLayout() {
 // Consume appearance inside SQLiteProvider's memo boundary so navigation updates
 // independently of database setup and without remounting the application tree.
 function ThemedNavigation() {
-  const themed_styles = useThemedStyles(styles);
   const appearance = useAppearance();
   const baseTheme = appearance.isDark ? DarkTheme : DefaultTheme;
   const navigationTheme = { ...baseTheme, colors: { ...baseTheme.colors,
@@ -75,17 +74,7 @@ function ThemedNavigation() {
           <Stack.Screen name="index" options={{ headerShown: false }} />
           <Stack.Screen name="vehicle-manager" options={{ title: 'Vehicle Manager' }} />
           <Stack.Screen name="add-vehicle" options={{ title: 'Add Vehicle' }} />
-          <Stack.Screen name="vehicle/[id]" options={{
-            title: 'My Vehicle',
-            headerBackVisible: false,
-            headerLeft: () => (
-              <Pressable accessibilityRole="button" accessibilityLabel="Go back"
-                onPress={() => router.back()}
-                style={({ pressed }) => [themed_styles.photoBackButton, pressed && { opacity: 0.6 }]}>
-                <Text style={themed_styles.photoBackIcon}>{'\u2190'}</Text>
-              </Pressable>
-            ),
-          }} />
+          <Stack.Screen name="vehicle/[id]" options={{ title: 'My Vehicle' }} />
           <Stack.Screen name="vehicle/manage" options={{ title: 'Manage Vehicle' }} />
           <Stack.Screen name="vehicle/details" options={{ title: 'Vehicle Details' }} />
           <Stack.Screen name="vehicle/edit" options={{ title: 'Edit Vehicle Details' }} />
@@ -99,11 +88,6 @@ function ThemedNavigation() {
 }
 
 const styles = StyleSheet.create({
-  photoBackButton: {
-    width: 44, height: 44, marginRight: 8,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  photoBackIcon: { color: lifePilotColors.green, fontSize: 28 },
   errorScreen: {
     flex: 1,
     alignItems: 'center',

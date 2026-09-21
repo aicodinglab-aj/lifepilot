@@ -1,9 +1,14 @@
 import { useCallback, useRef, useState } from 'react';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { ActivityIndicator, ScrollView, Switch, View } from 'react-native';
-import { TaskAction, TaskPage, TaskText } from '@/components/tasks/task-ui';
-import { FormTextField } from '@/components/forms/form-text-field';
+import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
+import { TaskPage } from '@/components/tasks/task-ui';
+import { Button } from '@/components/ui/button';
+import { StandardCard } from '@/components/ui/card';
+import { Chip } from '@/components/ui/chip';
+import { FieldLabel, FormInput, ToggleRow } from '@/components/ui/form-controls';
+import { Section } from '@/components/ui/section';
+import { spacing, typography } from '@/constants/design-system';
 import { getTask, getTaskCategories, saveTask } from '@/database/tasks';
 import { normalizeTask, priorities, taskId, type TaskDraft } from '@/features/tasks/task';
 import { useTaskNotifications } from '@/features/tasks/task-provider';
@@ -46,33 +51,42 @@ export default function TaskEditor() {
   }
   const update = (patch: Partial<TaskDraft>) => setForm((current) => ({ ...current, ...patch }));
   return <TaskPage title={id ? 'Edit Task' : 'Add Task'}>
-    <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 24, gap: 18 }}>
+    <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: spacing.base, paddingBottom: spacing.xl, gap: spacing.lg }}>
       {loading ? <ActivityIndicator color={colors.primary} /> : <>
-        {error && <TaskText danger>{error}</TaskText>}
-        {loadError ? <TaskAction label="Try again" onPress={() => setRetry((n) => n + 1)} /> : <>
-          <FormTextField label="Title" value={form.title} maxLength={200} editable={!busy} onChangeText={(title) => update({ title })} />
-          <FormTextField label="Description" optional multiline maxLength={4000} value={form.description ?? ''} editable={!busy} onChangeText={(description) => update({ description })} />
-          <TaskText>Category</TaskText>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            <TaskAction label="No category" selected={!form.categoryId} disabled={busy} onPress={() => update({ categoryId: null })} />
-            {categories.map((group) => <TaskAction key={group.id} label={group.name} selected={form.categoryId === group.id} disabled={busy} onPress={() => update({ categoryId: group.id })} />)}
-          </View>
-          <TaskText>Priority</TaskText>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>{priorities.map((priority) =>
-            <TaskAction key={priority} label={priority} selected={form.priority === priority} disabled={busy} onPress={() => update({ priority })} />)}</View>
-          <FormTextField label="Due date" optional placeholder="YYYY-MM-DD" value={form.dueDate ?? ''} editable={!busy}
-            onChangeText={(dueDate) => update(dueDate.trim() ? { dueDate } : { dueDate: null, dueTime: null, reminderEnabled: 0 })} />
-          <FormTextField label="Due time" optional placeholder="HH:MM (24-hour)" value={form.dueTime ?? ''} editable={!busy && !!form.dueDate}
-            onChangeText={(dueTime) => update({ dueTime, ...(!dueTime.trim() ? { reminderEnabled: 0 } : {}) })} />
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <TaskText>Local reminder</TaskText>
-            <Switch accessibilityLabel="Local reminder" value={!!form.reminderEnabled} disabled={busy || !form.dueDate || !form.dueTime}
-              trackColor={{ false: colors.controlBorder, true: colors.primary }} onValueChange={(enabled) => update({ reminderEnabled: enabled ? 1 : 0 })} />
-          </View>
-          <TaskText>Choose both a date and time for a reminder. No notification time is assumed. Past reminders will not be scheduled.</TaskText>
-          {notifications.warning && <TaskText>{notifications.warning}</TaskText>}
-          <TaskAction label="Enable notification permission" disabled={busy} onPress={() => { void notifications.request(); }} />
-          <TaskAction label={busy ? 'Saving…' : 'Save Task'} disabled={busy} onPress={() => { void save(); }} />
+        {error && <Text accessibilityRole="alert" style={[typography.secondaryBody, { color: colors.danger }]}>{error}</Text>}
+        {loadError ? <Button label="Try again" variant="secondary" onPress={() => setRetry((n) => n + 1)} /> : <>
+          <StandardCard>
+            <Section title="Task details" subtitle="Add the information you need to act on this task.">
+              <FormInput label="Title" value={form.title} maxLength={200} editable={!busy} onChangeText={(title) => update({ title })} />
+              <FormInput label="Description" optional multiline maxLength={4000} value={form.description ?? ''} editable={!busy} onChangeText={(description) => update({ description })} />
+            </Section>
+          </StandardCard>
+          <StandardCard>
+            <Section title="Organize">
+              <FieldLabel>Category</FieldLabel>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
+                <Chip label="No category" selected={!form.categoryId} disabled={busy} onPress={() => update({ categoryId: null })} />
+                {categories.map((group) => <Chip key={group.id} label={group.name} selected={form.categoryId === group.id} disabled={busy} onPress={() => update({ categoryId: group.id })} />)}
+              </View>
+              <FieldLabel>Priority</FieldLabel>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>{priorities.map((priority) =>
+                <Chip key={priority} label={priority} selected={form.priority === priority} disabled={busy} onPress={() => update({ priority })} />)}</View>
+            </Section>
+          </StandardCard>
+          <StandardCard>
+            <Section title="Schedule" subtitle="Dates and times use your device's local time.">
+              <FormInput label="Due date" optional placeholder="YYYY-MM-DD" value={form.dueDate ?? ''} editable={!busy}
+                onChangeText={(dueDate) => update(dueDate.trim() ? { dueDate } : { dueDate: null, dueTime: null, reminderEnabled: 0 })} />
+              <FormInput label="Due time" optional placeholder="HH:MM (24-hour)" value={form.dueTime ?? ''} editable={!busy && !!form.dueDate}
+                onChangeText={(dueTime) => update({ dueTime, ...(!dueTime.trim() ? { reminderEnabled: 0 } : {}) })} />
+              <ToggleRow label="Local reminder" description="Choose both a date and time to enable a reminder." value={!!form.reminderEnabled}
+                disabled={busy || !form.dueDate || !form.dueTime} onValueChange={(enabled) => update({ reminderEnabled: enabled ? 1 : 0 })} />
+              <Text style={[typography.caption, { color: colors.muted }]}>Past reminders will not be scheduled.</Text>
+              {notifications.warning && <Text style={[typography.caption, { color: colors.muted }]}>{notifications.warning}</Text>}
+              <Button label="Notification options" variant="tertiary" disabled={busy} onPress={() => { void notifications.request(); }} />
+            </Section>
+          </StandardCard>
+          <Button label="Save Task" loading={busy} disabled={busy} onPress={() => { void save(); }} />
         </>}
       </>}
     </ScrollView>
