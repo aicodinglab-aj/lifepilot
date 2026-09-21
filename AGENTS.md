@@ -258,6 +258,19 @@ stop and explain the impact before proceeding.
 
 ## Completion
 
+For significant features or architectural changes, update
+`docs/LIFEPILOT_MASTER_CONTEXT.md` in the same task. Read the existing document
+and changed source first; update affected sections, Current Project State, Known
+Issues, and a concise Changelog entry. Keep implemented and planned work distinct.
+Cosmetic changes do not need a master-context update.
+
+`docs/LIFEPILOT_MASTER_CONTEXT.md` is the canonical technical project context.
+After significant documentation changes, regenerate the human-readable
+`docs/LifePilot_Project_Guide.docx` with
+`python scripts/generate-project-guide.py`. Never edit the DOCX as source;
+if the two disagree, the Markdown wins. The generator is development-only and
+must not be added to the React Native application bundle.
+
 At the end of each task, provide a concise summary containing:
 
 - What was implemented
