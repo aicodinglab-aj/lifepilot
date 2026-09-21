@@ -1,18 +1,14 @@
 import type { ReactNode } from 'react';
-import { router, Stack } from 'expo-router';
 import { Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScreenHeader } from '@/components/ui/screen-header';
 import { useAppearance } from '@/features/appearance/appearance-provider';
 import { taskDue, taskFireAt, taskStatus, type Task } from '@/features/tasks/task';
 
 export function TaskPage({ title, children }: { title: string; children: ReactNode }) {
   const { colors } = useAppearance();
   return <SafeAreaView edges={['left', 'right', 'bottom']} style={{ flex: 1, backgroundColor: colors.background }}>
-    <Stack.Screen options={{ title, headerBackVisible: false, headerLeft: () =>
-      <Pressable accessibilityRole="button" accessibilityLabel="Go back" style={{ minHeight: 44, minWidth: 64, justifyContent: 'center' }}
-        onPress={() => router.canGoBack() ? router.back() : router.replace(title === 'Tasks / To-Do' ? '/' : '/tasks')}>
-        <Text style={{ color: colors.primary, fontWeight: '700' }}>← Back</Text>
-      </Pressable> }} />
+    <ScreenHeader title={title} fallbackHref={title === 'Tasks / To-Do' ? '/' : '/tasks'} />
     {children}
   </SafeAreaView>;
 }

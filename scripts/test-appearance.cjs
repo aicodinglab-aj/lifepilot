@@ -32,6 +32,29 @@ function storage(entries = []) {
 }
 const custom = (base, accent, system = null) => theme.resolveTheme('custom', system, { base, accent });
 
+test('shared V2 header renders an icon-only accessible Back action', () => {
+  const jsx = (type, props) => typeof type === 'function' ? type(props) : ({ type, props });
+  const actions = [];
+  let canGoBack = true;
+  const header = load('src/components/ui/screen-header.tsx', {
+    'react/jsx-runtime': { jsx, jsxs: jsx },
+    'expo-router': { Stack: { Screen: 'Screen' }, router: { canGoBack: () => canGoBack,
+      back: () => actions.push('back'), replace: (route) => actions.push(route) } },
+    'react-native': { Text: 'Text' },
+    '@/constants/design-system': { iconSizes: { navigation: 24 } },
+    '@/features/appearance/appearance-provider': { useAppearance: () => ({ colors: theme.resolveTheme('lifepilot').colors }) },
+    './button': { IconButton: (props) => ({ type: 'IconButton', props }) },
+  }).ScreenHeader({ title: 'Tasks / To-Do', fallbackHref: '/tasks' });
+  assert.equal(header.props.options.title, 'Tasks / To-Do');
+  assert.equal(header.props.options.headerBackVisible, false);
+  const back = header.props.options.headerLeft();
+  assert.equal(back.props.accessibilityLabel, 'Back');
+  assert.equal(back.props.icon.props.children, '←');
+  assert.notEqual(back.props.icon.props.children, '← Back');
+  back.props.onPress(); assert.equal(actions.pop(), 'back');
+  canGoBack = false; back.props.onPress(); assert.equal(actions.pop(), '/tasks');
+});
+
 test('Settings About navigation and developer information render safely across appearances', () => {
   const jsx = (type, props) => typeof type === 'function' ? type(props) : ({ type, props });
   let resolved = theme.resolveTheme('lifepilot', null);
@@ -156,6 +179,19 @@ test('semantic income, expense, danger, success and warning are independent of a
       assert.equal(theme.themeColor('#F5C76B', resolved), emerald.warning);
       assert.equal(theme.themeColor('#FFB6A6', resolved), emerald.expense);
     }
+  }
+});
+
+test('V2 surface, divider, info and disabled roles resolve for every appearance base', () => {
+  const resolved = [theme.resolveTheme('lifepilot'), theme.resolveTheme('light')];
+  for (const base of theme.CUSTOM_BASES) for (const accent of theme.ACCENT_OPTIONS) resolved.push(custom(base, accent));
+  for (const appearance of resolved) {
+    const colors = appearance.colors;
+    assert.equal(colors.surface, colors.card);
+    for (const token of ['surfaceSecondary', 'divider', 'info', 'disabledText', 'disabledSurface']) {
+      assert.match(colors[token], /^#[0-9A-F]{6}$/i, `${appearance.id}: ${token}`);
+    }
+    assert.notEqual(colors.surfaceSecondary, colors.background);
   }
 });
 

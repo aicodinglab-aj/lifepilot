@@ -10,11 +10,13 @@ export function ReminderNotificationStatus() {
   return <View style={themed_styles.card}>
     <Text style={themed_styles.sectionTitle}>Local notifications</Text>
     <Text style={themed_styles.body}>{permission === 'granted' ? 'Notification permission is enabled.'
-      : permission === 'unavailable' ? 'Local notifications are available in the Android and iOS app.'
+      : permission === 'unavailable' ? (Platform.OS === 'web'
+        ? 'Local notifications are available in the Android and iOS app.'
+        : 'Notifications require a development, preview or production build. In-app reminders remain available in Expo Go.')
         : permission === 'denied' || permission === 'channel-disabled' ? 'Notifications are disabled in device settings. Your in-app reminders still work.'
           : 'Notifications are optional. You can continue using in-app reminders without granting permission.'}</Text>
     {permission === 'undetermined' && <CoverageAction label="Enable notifications" disabled={runtime.busy} onPress={() => { void runtime.requestPermission(); }} />}
-    {Platform.OS !== 'web' && <CoverageAction label="Open device settings" onPress={() => { void Linking.openSettings().catch(() => {}); }} />}
+    {Platform.OS !== 'web' && permission !== 'unavailable' && <CoverageAction label="Open device settings" onPress={() => { void Linking.openSettings().catch(() => {}); }} />}
     {runtime.result && <Text style={themed_styles.body}>{runtime.result.scheduled} upcoming notifications scheduled.
       {runtime.result.deferred ? ` ${runtime.result.deferred} later notifications are queued for future reconciliation; reopen LifePilot regularly.` : ''}</Text>}
     {runtime.error && <Text accessibilityRole="alert" style={themed_styles.body}>{runtime.error}</Text>}

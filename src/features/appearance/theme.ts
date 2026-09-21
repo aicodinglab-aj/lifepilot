@@ -35,13 +35,17 @@ const bases = {
 };
 function semanticColors(base: keyof typeof bases, primary = bases[base].green) {
   const light = base === 'light';
+  const surfaceSecondary = base === 'lifepilot' ? '#193028' : light ? '#EEF3F0' : '#292929';
   return Object.freeze({ ...bases[base], green: primary, white: bases[base].white,
     primary, text: bases[base].white, onPrimary: light ? '#FFFFFF' : '#0B1110',
     danger: light ? '#AF2525' : '#FF9A9A', warning: light ? '#806000' : '#F5C76B',
     success: light ? '#087F4F' : '#5BE49B', income: light ? '#087F4F' : '#35D98A',
-    expense: light ? '#A64029' : '#FFB6A6',
+    info: light ? '#185ABD' : '#79B8FF', expense: light ? '#A64029' : '#FFB6A6',
     controlBorder: base === 'lifepilot' ? bases[base].border : light ? '#76867D' : '#808080',
-    disabled: bases[base].muted,
+    divider: base === 'lifepilot' ? '#1D362D' : light ? '#DCE5E0' : '#333333',
+    surface: bases[base].card, surfaceSecondary,
+    disabled: bases[base].muted, disabledText: light ? '#7B8780' : '#777D79',
+    disabledSurface: light ? '#E5E9E7' : '#292C2A',
     primarySurface: light ? '#F3F6F4' : '#2A2A2A',
   });
 }

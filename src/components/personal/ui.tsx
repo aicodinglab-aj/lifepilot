@@ -1,20 +1,16 @@
 import { useThemedStyles, useThemeColor, useAppearance } from '@/features/appearance/appearance-provider';
 import type { ReactNode } from 'react';
-import { router, Stack } from 'expo-router';
+import { router } from 'expo-router';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScreenHeader } from '@/components/ui/screen-header';
 import { lifePilotColors as colors } from '@/constants/lifepilot-theme';
 import { formatMoney } from '@/features/personal/money';
 import { displayDate } from '@/features/personal/date';
 import type { Transaction } from '@/features/personal/transaction';
 
 export function PersonalHeader({ title }: { title: string }) {
-  const themed_styles = useThemedStyles(styles);
-  return <Stack.Screen options={{ title, headerBackVisible: false, headerLeft: () =>
-    <Pressable accessibilityRole="button" accessibilityLabel="Go back" style={themed_styles.back}
-      onPress={() => router.canGoBack() ? router.back() : router.replace('/')}>
-      <Text style={themed_styles.accent}>← Back</Text>
-    </Pressable> }} />;
+  return <ScreenHeader title={title} fallbackHref="/" />;
 }
 export function Action({ label, onPress, disabled = false, destructive = false }: { label: string; onPress: () => void; disabled?: boolean; destructive?: boolean }) {
   const themed_styles = useThemedStyles(styles);
@@ -68,5 +64,7 @@ export const styles = StyleSheet.create({
   error: { color: '#FF9A9A', fontSize: 14, lineHeight: 22 },
   card: { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1, borderRadius: 18, padding: 18, gap: 8 },
   action: { minHeight: 48, alignItems: 'center', justifyContent: 'center', borderColor: colors.border, borderWidth: 1, borderRadius: 14, padding: 12 },
-  back: { minHeight: 44, minWidth: 64, justifyContent: 'center' },
+  monthNavigation: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 8, rowGap: 8, justifyContent: 'space-between' },
+  monthNavigationSide: { flexGrow: 1, flexBasis: 120, minWidth: 0, alignItems: 'flex-start' },
+  monthNavigationNext: { alignItems: 'flex-end' },
 });

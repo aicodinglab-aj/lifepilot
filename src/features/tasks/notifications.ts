@@ -1,18 +1,21 @@
-import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
+import { loadNotificationRuntime } from '@/features/notifications/runtime';
 import { notificationAdapter } from '@/features/reminders/notifications';
 import type { ReminderPermission } from '@/features/reminders/reconcile';
 import { TASK_NOTIFICATION_OWNER, type TaskNotificationAdapter } from './task-notifications';
 
 const CHANNEL = 'task-reminders';
 async function configure() {
+  const Notifications = await loadNotificationRuntime();
+  if (!Notifications) return;
   if (Platform.OS === 'android') await Notifications.setNotificationChannelAsync(CHANNEL, {
     name: 'Task reminders', importance: Notifications.AndroidImportance.DEFAULT,
     sound: 'default', lockscreenVisibility: Notifications.AndroidNotificationVisibility.PRIVATE,
   });
 }
 export async function taskNotificationPermission(): Promise<ReminderPermission> {
-  if (Platform.OS === 'web') return 'unavailable';
+  const Notifications = await loadNotificationRuntime();
+  if (!Notifications) return 'unavailable';
   await configure();
   const result = await Notifications.getPermissionsAsync();
   const granted = result.ios ? [Notifications.IosAuthorizationStatus.AUTHORIZED, Notifications.IosAuthorizationStatus.PROVISIONAL,
@@ -32,6 +35,8 @@ export function requestTaskPermission(): Promise<void> {
 async function requestPermission() {
   // Explicit user action only. Like vehicle reminders, never repeatedly prompt after denial.
   if (await taskNotificationPermission() === 'undetermined') {
+    const Notifications = await loadNotificationRuntime();
+    if (!Notifications) return;
     await Notifications.requestPermissionsAsync({ ios: { allowAlert: true, allowSound: true, allowBadge: false } });
   }
 }
@@ -41,6 +46,8 @@ export const taskNotificationAdapter: TaskNotificationAdapter = {
   cancel: notificationAdapter.cancel,
   permission: taskNotificationPermission,
   schedule: async (plan) => {
+    const Notifications = await loadNotificationRuntime();
+    if (!Notifications) throw new Error('Notifications are unavailable in this runtime.');
     if (plan.fireAt <= Date.now()) throw new Error('The task reminder time has passed.');
     return Notifications.scheduleNotificationAsync({ identifier: plan.id,
       content: { title: 'LifePilot Task', body: plan.title, sound: 'default',

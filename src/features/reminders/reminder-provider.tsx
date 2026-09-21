@@ -1,8 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { router, useRootNavigationState } from 'expo-router';
-import * as Notifications from 'expo-notifications';
 import { addDatabaseChangeListener, useSQLiteContext } from 'expo-sqlite';
 import { AppState, Platform } from 'react-native';
+import { loadNotificationRuntime } from '@/features/notifications/runtime';
 import { getReminderRevision } from '@/database/reminders';
 import { subscribeVehicleOperations } from '@/features/vehicles/vehicle-operation';
 import { configureReminderChannel, installReminderNotificationHandler, notificationAdapter, notificationPermission,
@@ -49,7 +49,7 @@ export function ReminderProvider({ children }: { children: ReactNode }) {
   }, [db, refresh]);
   useEffect(() => {
     mounted.current = true;
-    installReminderNotificationHandler();
+    void installReminderNotificationHandler();
     let debounce: ReturnType<typeof setTimeout>;
     const schedule = () => {
       clearTimeout(debounce);
@@ -69,12 +69,16 @@ export function ReminderProvider({ children }: { children: ReactNode }) {
       ticks++;
       void getReminderRevision(db).then((revision) => { if (revision !== lastRevision.current || ticks % 4 === 0) schedule(); }).catch(() => {});
     }, 15000);
-    const received = Platform.OS === 'web' ? null : Notifications.addNotificationReceivedListener((notification) => {
-      const owner = notification.request.content.data?.owner;
-      if (owner === NOTIFICATION_OWNER || owner === TEST_NOTIFICATION_OWNER) schedule();
+    let active = true, received: { remove(): void } | null = null;
+    void loadNotificationRuntime().then((Notifications) => {
+      if (!active || !Notifications) return;
+      received = Notifications.addNotificationReceivedListener((notification) => {
+        const owner = notification.request.content.data?.owner;
+        if (owner === NOTIFICATION_OWNER || owner === TEST_NOTIFICATION_OWNER) schedule();
+      });
     });
     return () => {
-      mounted.current = false; clearTimeout(debounce); clearInterval(poll);
+      mounted.current = false; active = false; clearTimeout(debounce); clearInterval(poll);
       operations(); database.remove(); app.remove(); received?.remove();
     };
   }, [db, refresh]);
@@ -87,7 +91,10 @@ function ReminderNotificationNavigation() {
   const handled = useRef<string | null>(null);
   useEffect(() => {
     if (!navigation?.key || Platform.OS === 'web') return;
-    const open = (response: Notifications.NotificationResponse) => {
+    let active = true, subscription: { remove(): void } | null = null;
+    void loadNotificationRuntime().then((Notifications) => {
+      if (!active || !Notifications) return;
+      const open = (response: Parameters<Parameters<typeof Notifications.addNotificationResponseReceivedListener>[0]>[0]) => {
       const request = response.notification.request;
       const owner = request.content.data?.owner;
       const task = owner === 'lifepilot.tasks.v1' && request.identifier.startsWith('lifepilot.tasks.v1:');
@@ -98,11 +105,12 @@ function ReminderNotificationNavigation() {
       // A fixed route avoids trusting notification URLs or navigating to deleted source records.
       router.push(task ? '/tasks' : '/reminders');
       void Notifications.clearLastNotificationResponseAsync().catch(() => {});
-    };
-    const last = Notifications.getLastNotificationResponse();
-    if (last) open(last);
-    const subscription = Notifications.addNotificationResponseReceivedListener(open);
-    return () => subscription.remove();
+      };
+      const last = Notifications.getLastNotificationResponse();
+      if (last) open(last);
+      subscription = Notifications.addNotificationResponseReceivedListener(open);
+    });
+    return () => { active = false; subscription?.remove(); };
   }, [navigation?.key]);
   return null;
 }

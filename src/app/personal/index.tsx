@@ -34,9 +34,13 @@ export default function PersonalDashboard() {
     {state.data && <>
       <Text style={themed_styles.title}>Personal Expenses</Text>
       <Text style={themed_styles.heading}>{monthLabel(month)}</Text>
-      <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
-        <Action label="← Previous month" disabled={!previous} onPress={() => setSelection(previous)} />
-        <Action label="Next month →" disabled={!next} onPress={() => setSelection(next)} />
+      <View style={themed_styles.monthNavigation}>
+        <View style={themed_styles.monthNavigationSide}>
+          <Action label="← Previous month" disabled={!previous} onPress={() => setSelection(previous)} />
+        </View>
+        <View style={[themed_styles.monthNavigationSide, themed_styles.monthNavigationNext]}>
+          <Action label="Next month →" disabled={!next} onPress={() => setSelection(next)} />
+        </View>
       </View>
       <Action label="Current month" onPress={() => { setSelection(null); setCurrentMonth(localToday().slice(0, 7)); }} />
       <View style={themed_styles.card}>

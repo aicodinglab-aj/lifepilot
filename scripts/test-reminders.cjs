@@ -58,6 +58,17 @@ function dateTests() {
   assert.equal(domain.planNotifications([{ ...source, dueDate: null, dueOdometer: 1000 }], interval).length, 0);
 }
 async function debugNotificationTests() {
+  const expoGo = load('src/features/notifications/runtime.ts', {
+    'expo-constants': { expoGoConfig: {} }, 'react-native': { Platform: { OS: 'android' } },
+  });
+  assert.equal(expoGo.notificationRuntimeAvailable, false);
+  assert.equal(await expoGo.loadNotificationRuntime(), null, 'Expo Go must not import expo-notifications');
+  const nativeRuntime = load('src/features/notifications/runtime.ts', {
+    'expo-constants': { expoGoConfig: null }, 'react-native': { Platform: { OS: 'android' } },
+    'expo-notifications': { marker: 'native' },
+  });
+  assert.equal(nativeRuntime.notificationRuntimeAvailable, true);
+  assert.equal((await nativeRuntime.loadNotificationRuntime()).marker, 'native');
   const profiles = JSON.parse(fs.readFileSync(path.join(__dirname, '../eas.json'), 'utf8')).build;
   for (const [variant, dev, expected] of [
     [profiles.preview.env.EXPO_PUBLIC_APP_VARIANT, false, true],
@@ -77,7 +88,8 @@ async function debugNotificationTests() {
       scheduleNotificationAsync: async (request) => { calls.push(['schedule', request]); if (fail) throw new Error('native scheduling failed'); return request.identifier; },
     };
     const api = load('src/features/reminders/notifications.ts', {
-      'expo-notifications': native, 'react-native': { Platform: { OS: 'android' } }, './reminder': domain, './test-build': gate,
+      '@/features/notifications/runtime': { loadNotificationRuntime: async () => native },
+      'react-native': { Platform: { OS: 'android' } }, './reminder': domain, './test-build': gate,
     });
     if (!expected) {
       await assert.rejects(api.scheduleDebugReminder(), /only available/);

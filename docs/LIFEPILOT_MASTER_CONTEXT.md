@@ -58,6 +58,8 @@ android/          Generated local native project, ignored by Git
 
 The signature LifePilot palette in `src/constants/lifepilot-theme.ts` uses near-black `#0B1110`, emerald `#35D98A`, light text, muted text, cards, and borders. `src/features/appearance/*` provides LifePilot, light, system, and custom themes; custom themes select dark/light base and an accent preset. Preference is stored locally. `app.json` uses automatic system appearance, the LifePilot icon and adaptive Android foreground, and a dark LifePilot splash image. `src/app/about.tsx` shows the LP/leaf icon and DMJ Labs. Some screens still contain literal colors; use semantic theme tokens when extending them.
 
+UI/UX V2 Stage 1 adds an incremental shared design system without broadly redesigning feature screens. `src/constants/design-system.ts` defines semantic spacing (`xs` through `xl`), typography roles, radii, minimum control sizes, icon sizes, and common layout geometry. The appearance resolver now exposes surface, secondary surface, divider, info, and explicit disabled roles in addition to the existing background/card, primary, text, muted, success, warning, and danger colors; every role resolves through LifePilot, Light, System, and Custom themes. `src/components/ui/*` provides standard/interactive/status cards, primary/secondary/tertiary and icon buttons, an icon-only Expo Router screen header, sections, selectable chips, form input/label/message/selector/toggle primitives, empty states, and semantic status badges. Components use flex layouts, wrapping/min-width guards, minimum 44-point touch targets, accessibility roles/states, and system fonts. The task page wrapper is the first small proof migration; other screens retain their existing styling for later staged migration.
+
 ## 7. Vehicle Manager
 
 Garage lists vehicles and opens per-vehicle details. Add/edit supports registration, make/model, year, fuel type, odometer, and additional identity/purchase/warranty fields. Vehicle photos are copied to owned storage, can be selected during creation, and have one database-enforced cover photo per vehicle. Manage Vehicle has confirmed deletion and durable file cleanup. Service & Maintenance has dated history, odometer, cost parts, next-service fields, and bill images. Insurance and PUC have dated records, history, documents, status, and deletion/edit flows. Vehicle reminders derive from insurance, PUC, and service records, with in-app status and local notifications. Important implementation files are `src/database/vehicles.ts`, `vehicle-photos.ts`, `vehicle-services.ts`, `vehicle-coverage.ts`, `reminders.ts`, their `src/features/vehicles/*` workflows, and `src/storage/*`.
@@ -98,7 +100,9 @@ SQLite stores metadata and `local_uri`, not full images. `expo-file-system` stor
 
 ## 12. Notifications
 
-Vehicle reminders use `vehicle-reminders` Android channel and persisted source/schedule/cleanup metadata. Preferences and due-date offsets control scheduling; reconciliation compares desired reminders with OS scheduled inventory, handles capacity/failures, and cancels obsolete IDs. Mileage threshold supports in-app reminder status; date-based local notifications come from insurance, PUC, and next-service dates. Tasks use a separate `task-reminders` channel and `lifepilot.tasks.v1:` IDs. Task reconciliation reads incomplete future candidates in pages, reserves capacity for other notifications, and uses the native scheduled inventory for cancellation retry. Both domains share one foreground handler and response handling but remain separate in data and IDs. Permission is requested through explicit UI; denial does not prevent saving records. Web notification scheduling is unavailable. Preview/development builds expose a short-delay vehicle test notification; production hides it. Expo Go and installed APK behavior should be checked against SDK 57 and on the target device, including permissions, delivery, taps, timezone changes, and cancellation.
+Vehicle reminders use `vehicle-reminders` Android channel and persisted source/schedule/cleanup metadata. Preferences and due-date offsets control scheduling; reconciliation compares desired reminders with OS scheduled inventory, handles capacity/failures, and cancels obsolete IDs. Mileage threshold supports in-app reminder status; date-based local notifications come from insurance, PUC, and next-service dates. Tasks use a separate `task-reminders` channel and `lifepilot.tasks.v1:` IDs. Task reconciliation reads incomplete future candidates in pages, reserves capacity for other notifications, and uses the native scheduled inventory for cancellation retry. Both domains share one foreground handler and response handling but remain separate in data and IDs. Permission is requested through explicit UI; denial does not prevent saving records.
+
+`src/features/notifications/runtime.ts` is the native capability boundary. It detects Expo Go through `Constants.expoGoConfig`, not `ExecutionEnvironment.StoreClient` because that broader value also covers development builds. In Expo Go and on web it returns unavailable without dynamically importing `expo-notifications`; database-backed in-app reminders, task records, and all other UI remain active, while channels, permissions, OS scheduling/cancellation, foreground notification listeners, response navigation, and test notifications are disabled with an explicit unavailable state. Development, preview, and production native builds have no Expo Go config, so they dynamically load the same `expo-notifications` implementation and retain normal behavior. Preview/development builds expose a short-delay vehicle test notification; production hides it. Installed-build behavior should still be checked on the target device, including permissions, delivery, taps, timezone changes, and cancellation.
 
 ## 13. Testing
 
@@ -126,7 +130,7 @@ Before installing a locally built APK over a data-bearing installation, verify: 
 | --- | --- | --- | --- |
 | Open | Local Android preview | Last documented release attempt failed downloading NDK 27.1.12297006; no APK/signature was verified. | Install the exact NDK, build, inspect package/version/signature, then compare with device. |
 | Needs device verification | Personal save | `PERSONAL_EXPENSES.md` records a past Android post-save exit investigation; automated save/navigation tests pass, but latest device outcome is not established by source. | Recheck on current preview APK and collect logs if reproduced. |
-| Needs device verification | Native workflows | Coverage/media, task and vehicle notifications, migration on existing installation, hardware Back, and installed-APK update have incomplete real-device verification in feature notes. | Execute targeted manual checklists on current build. |
+| Needs device verification | Native workflows | Coverage/media, task and vehicle notifications, migration on existing installation, hardware Back, installed-APK update, and the Expo Go startup path have incomplete real-device verification in feature notes. | Confirm Expo Go starts without notification module evaluation, then execute native-build notification and other targeted checklists. |
 | Open documentation debt | README and vehicle module metadata | README is starter text; Home mentions fuel/reports while module registry says fuel/charging is future. Service/insurance placeholder metadata is stale relative to dedicated routes. | Update product-facing descriptions and README in a separate scoped change. |
 
 ## 19. Future Roadmap
@@ -145,6 +149,7 @@ Only source-supported plans are listed: fuel/charging logs and reports; personal
 | `src/database/{personal,personal-analytics,tasks}.ts` | Personal and task repositories. |
 | `src/features/reminders/*`, `src/features/tasks/*` | Notification and task workflows. |
 | `src/features/appearance/*`, `src/constants/lifepilot-theme.ts` | Theme resolution and palette. |
+| `src/constants/design-system.ts`, `src/components/ui/*` | UI/UX V2 semantic tokens and reusable interface primitives. |
 | `src/storage/*` | Owned file import, path checks, deletion. |
 | `scripts/test-*.cjs` | Regression suites. |
 | `scripts/generate-project-guide.py`, `docs/LifePilot_Project_Guide.docx` | Development-only Markdown-to-Word generator and its reading copy. |
@@ -163,6 +168,7 @@ Dates below are **recorded here**; original decision dates are not established f
 | Separate expense domains | Vehicle costs and personal finance have different ownership. | 2026-09-21 | No implicit cross-domain aggregation. |
 | Local notification reconciliation | Keep OS schedule aligned with SQLite records and retry failures. | 2026-09-21 | Vehicle/task IDs and channels are distinct. |
 | Preserve signing identity for updates | Android updates depend on package/signature/version compatibility. | 2026-09-21 | Compare actual APKs before installing over existing data. |
+| Incremental shared UI system | Centralize visual roles while avoiding a risky all-screen redesign. | 2026-09-21 | New screens use V2 tokens/primitives; existing screens migrate in focused stages. |
 
 ## 22. Instructions for Future LLMs
 
@@ -170,10 +176,10 @@ Read this document first, then inspect the current repository; code overrides ou
 
 ## 23. Current Project State
 
-- **Completed in source:** vehicle CRUD/photos/services/coverage, personal transactions and analytics, tasks, appearance, local reminder scheduling, migrations through v9, and regression scripts.
+- **Completed in source:** vehicle CRUD/photos/services/coverage, personal transactions and analytics, tasks, appearance, UI/UX V2 shared tokens/primitives, local reminder scheduling, Expo Go notification isolation, migrations through v9, and regression scripts.
 - **In progress / unverified:** local preview release build, on-device upgrade safety, and current-device testing of native media/notifications/personal save behavior.
 - **Blocked:** last documented local APK build by unavailable/corrupt NDK download; current external environment may differ.
-- **Next:** restore build prerequisites, produce and inspect an APK, compare installed/new signing and version, then run data-preserving device checklists. Fuel/charging and reports remain future work.
+- **Next:** migrate Home to the V2 system using the existing route structure and real module states, then migrate other screens in focused stages. Native build/update verification remains outstanding. Fuel/charging and reports remain future work.
 
 ## 24. Changelog
 
@@ -181,6 +187,8 @@ Read this document first, then inspect the current repository; code overrides ou
 | --- | --- | --- |
 | 2026-09-21 | Created master context from current repository and existing feature notes. | Captures schema v9, domain boundaries, storage/notification design and unverified Android update state; no app behavior changed. |
 | 2026-09-21 | Added a generated Word reading copy. | Markdown remains canonical; a Python standard-library script produces the DOCX without mobile dependencies. |
+| 2026-09-21 | Isolated native notifications from Expo Go startup. | Expo Go keeps UI/database and in-app reminders without importing `expo-notifications`; native builds retain full notification behavior. |
+| 2026-09-21 | Added UI/UX V2 Stage 1 shared design system. | Adds theme-aware tokens and reusable cards, buttons, headers, sections, chips, forms, empty states and status presentation; no business behavior or schema changed. |
 
 Documentation maintenance rule: update affected sections of this file in the **same work** as any significant implementation or architectural change. Do not rewrite it wholesale; verify paths, versions, implemented status and known issues against source each time. Never add credentials, tokens, signing passwords, private keys or environment secrets.
 

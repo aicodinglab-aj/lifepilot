@@ -146,7 +146,7 @@ async function main() {
   const native = load('src/features/tasks/notifications.ts', {
     'react-native': { Platform: { OS: 'android' } },
     '@/features/reminders/notifications': { notificationAdapter: { capacity: 450, scheduled: adapter.scheduled, cancel: adapter.cancel } },
-    'expo-notifications': {
+    '@/features/notifications/runtime': { loadNotificationRuntime: async () => ({
       AndroidImportance: { DEFAULT: 3, NONE: 0 }, AndroidNotificationVisibility: { PRIVATE: 0 },
       SchedulableTriggerInputTypes: { DATE: 'date' },
       setNotificationChannelAsync: async (channel) => assert.equal(channel, 'task-reminders'),
@@ -154,7 +154,7 @@ async function main() {
       getPermissionsAsync: async () => permissionResult,
       requestPermissionsAsync: async () => { requests++; permissionResult = { status: 'denied', granted: false, canAskAgain: true }; },
       scheduleNotificationAsync: async (value) => { payload = value; return value.identifier; },
-    },
+    }) },
   });
   await Promise.all([native.requestTaskPermission(), native.requestTaskPermission()]);
   await native.requestTaskPermission(); assert.equal(requests, 1, 'denied permission must never reprompt');
@@ -168,10 +168,10 @@ async function main() {
   let handler;
   const existingNotifications = load('src/features/reminders/notifications.ts', {
     'react-native': { Platform: { OS: 'android' } },
-    'expo-notifications': { setNotificationHandler: (value) => { handler = value; } },
+    '@/features/notifications/runtime': { loadNotificationRuntime: async () => ({ setNotificationHandler: (value) => { handler = value; } }) },
     './test-build': { reminderTestEnabled: false },
   });
-  existingNotifications.installReminderNotificationHandler();
+  await existingNotifications.installReminderNotificationHandler();
   const foreground = (owner, identifier) => handler.handleNotification({ request: { identifier, content: { data: { owner } } } });
   assert.equal((await foreground('lifepilot.tasks.v1', 'lifepilot.tasks.v1:1')).shouldShowBanner, true);
   assert.equal((await foreground('lifepilot.tasks.v1', 'unrelated')).shouldShowBanner, false);
@@ -185,6 +185,7 @@ async function main() {
     'react-native': { Pressable: 'Pressable', Text: 'Text', View: 'View' },
     'react-native-safe-area-context': { SafeAreaView: 'SafeAreaView' },
     'expo-router': { Stack: { Screen: 'Screen' }, router: { canGoBack: () => true, back: () => { wentBack = true; } } },
+    '@/components/ui/screen-header': { ScreenHeader: ({ title }) => jsx('Screen', { options: { title, headerLeft: () => jsx('Pressable', { onPress: () => { wentBack = true; } }) } }) },
     '@/features/appearance/appearance-provider': { useAppearance: () => resolved },
   });
   for (const preference of ['lifepilot', 'light', 'system', 'custom']) {
