@@ -78,6 +78,12 @@ export default function SettingsScreen() {
 
       {saving && <Text accessibilityLiveRegion="polite" style={[typography.caption, { color: colors.muted }]}>Saving appearance...</Text>}
       {error && <Text accessibilityRole="alert" style={[typography.secondaryBody, { color: colors.danger }]}>{error}</Text>}
+      <InteractiveCard accessibilityLabel="Backup and Restore" onPress={() => router.push('/backup-restore')}
+        leading={<SymbolView name={{ ios: 'externaldrive', android: 'backup', web: 'backup' }} size={iconSizes.card} tintColor={colors.primary} />}
+        trailing={<SymbolView name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }} size={iconSizes.action} tintColor={colors.primary} />}>
+        <Text style={[typography.cardTitle, { color: colors.text }]}>Backup & Restore</Text>
+        <Text style={[typography.secondaryBody, { color: colors.muted }]}>Save or recover your LifePilot data</Text>
+      </InteractiveCard>
       <InteractiveCard accessibilityLabel="About LifePilot" onPress={() => router.push('/about')}
         leading={<SymbolView name={{ ios: 'info.circle', android: 'info', web: 'info' }} size={iconSizes.card} tintColor={colors.primary} />}
         trailing={<SymbolView name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }} size={iconSizes.action} tintColor={colors.primary} />}>

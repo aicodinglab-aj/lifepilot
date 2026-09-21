@@ -108,6 +108,14 @@ The former Expo Go startup crash was caused by a static top-level `expo-notifica
 
 Development, preview and production native builds have no Expo Go config, so the runtime dynamically imports the existing `expo-notifications` implementation and retains permission, scheduling, cancellation, reconciliation and response behavior. Preview/development builds expose a short-delay vehicle test notification; production hides it. Installed-build behavior still requires target-device verification, including permissions, delivery, taps, timezone changes and cancellation.
 
+## 12A. Backup & Restore V1
+
+Settings exposes a V2 Backup & Restore screen. V1 creates a single `.lpbackup` JSON/Base64 package containing a consistent `serializeAsync()` snapshot of `lifepilot.db`, all persistent files below the validated `vehicle-photos` root, a versioned manifest and SHA-256 plus byte size for every entry. This covers vehicle records/photos, service history/bills, insurance/PUC records and images, Personal Expenses, Tasks, categories and SQLite reminder preferences. Cache, staging, generated backups, credentials, build files, native notification inventory/permissions/channels and the separate device-local appearance preference database are excluded.
+
+Restore inspection verifies structure, paths, counts, Base64 sizes, checksums, SQLite integrity and actual schema without changing active data. Schema v9 restores directly; older supported schemas use the existing migration function in isolation; newer schemas are rejected. Before replacement, the engine snapshots the current database and owned file tree. It writes through Expo SQLite's online backup API and replacement-restores only the owned file root, with database/file rollback on failure. The root coordinator unmounts navigation and reminder/task providers before authorizing replacement, blocks Android Back, releases suspension on failure and locks on a restart-required success screen.
+
+Absolute attachment URIs in SQLite are safe across installations because storage helpers validate only the exact owner/path suffix and reconstruct files below the current `Paths.document` root. Restore resets the source device's notification permission-request flag and clears vehicle schedule/cleanup metadata while retaining user preferences and reminder sources. After restart, normal reconciliation uses the destination device's OS inventory to recreate eligible vehicle/task notifications; restore itself never requests permission. The JSON/Base64 implementation can use significant memory and still requires real Android testing for large packages, system pickers, online database replacement, rollback and restart behavior.
+
 ## 13. Testing
 
 Run `npx tsc --noEmit`, `npm run lint`, and relevant Node regression scripts in `scripts/test-*.cjs`; run `git diff --check` before delivery. Tests cover vehicles, photos, deletion, details, services, coverage, reminders, personal transactions/analytics, tasks, appearance and overview. Database tests include migration preservation/rollback scenarios described in the feature notes. During the V2 stages, TypeScript, changed-file ESLint, task tests, appearance tests, vehicle details/photos/services/coverage/deletion/overview tests, reminder tests, personal transaction tests and personal analytics tests completed successfully in their relevant stages; `git diff --check` also passed. There is no `tests/` directory or Jest script.
@@ -139,12 +147,12 @@ Before installing a locally built APK over a data-bearing installation, verify: 
 | Paused | Local Android preview | Last documented release attempt failed downloading NDK 27.1.12297006; no APK/signature was verified. | Prefer the supported EAS preview route when available; resume local troubleshooting only as a separately scoped task. |
 | Needs device verification | Personal save | `PERSONAL_EXPENSES.md` records a past Android post-save exit investigation; automated save/navigation tests pass, but latest device outcome is not established by source. | Recheck on current preview APK and collect logs if reproduced. |
 | Needs device verification | Native workflows | Coverage/media, task and vehicle notifications, migration on existing installation, hardware Back, installed-APK update, and the Expo Go startup path have incomplete real-device verification in feature notes. | Confirm Expo Go starts without notification module evaluation, then execute native-build notification and other targeted checklists. |
-| Planned | Backup & Restore | There is no implemented transfer workflow for the SQLite database and owned photos/documents. | Design a data-safe export/import format and validation flow before changing storage or schema. |
+| Needs device verification | Backup & Restore V1 | Create, inspect, replacement restore, rollback, cross-device path rebasing and restart locking are implemented and tested with native mocks. | Test system picker/export, large packages, online replacement, rollback and restart on Android with preserved installed data. |
 | Open documentation debt | README and vehicle module metadata | README is starter text; Fuel / Charging remains a coming-later route while service and insurance use dedicated implemented routes. | Update product-facing descriptions and README in a separate scoped change. |
 
 ## 19. Future Roadmap
 
-**Next planned capability:** Backup & Restore so users can transfer LifePilot data, vehicle photos and stored documents to another phone. It is not implemented. The design must preserve ownership relationships, validate imported paths/data, avoid destructive replacement by default, and cover both database and owned files.
+Backup & Restore V1 is implemented in source and awaits Android device validation. Future backup work may add streaming/archive packaging or encryption after V1 behavior is proven; cloud account and synchronization remain separate future work.
 
 Other planned or future candidates are fuel/charging logs and reports; general vehicle document uploads; personal budgets, recurring entries, receipts and custom category editing; and task recurring items, subtasks, custom categories and attachments. These are **not implemented**. Cloud account and synchronization remain future work after local backup/restore; no cloud data layer or account system exists today. Any future scope should be confirmed before creating schema or UI.
 
@@ -187,10 +195,10 @@ Read this document first, then inspect the current repository; code overrides ou
 
 ## 23. Current Project State
 
-- **Completed in source:** UI/UX V2 across Home, Tasks, Garage/Vehicle Detail, Personal Expenses, Vehicle Reminders/Settings, Settings/About and remaining vehicle forms; vehicle CRUD/photos/services/coverage; personal transactions and analytics; tasks; appearance themes; local reminder scheduling; Expo Go notification isolation; migrations through v9; and regression scripts.
+- **Completed in source:** UI/UX V2 across Home, Tasks, Garage/Vehicle Detail, Personal Expenses, Vehicle Reminders/Settings, Settings/About and remaining vehicle forms; vehicle CRUD/photos/services/coverage; personal transactions and analytics; tasks; appearance themes; local reminder scheduling; Expo Go notification isolation; Backup & Restore V1 create/inspect/replacement/rollback UI and engines; migrations through v9; and regression scripts.
 - **In progress / unverified:** final full-device V2 regression, native notification/media testing, installed-data upgrade safety and current-device verification of the historical personal-save concern.
 - **Paused:** local preview APK troubleshooting after the documented NDK download failure. No successful APK build is recorded. EAS preview is the intended supported build route when available.
-- **Next:** design and implement Backup & Restore for transferring the database plus owned photos/documents between phones. Fuel/charging, general document uploads and cloud account/sync remain future work.
+- **Next:** complete real-device Backup & Restore and final V2 regression testing. Fuel/charging, general document uploads and cloud account/sync remain future work.
 
 ## 24. Changelog
 
@@ -202,6 +210,7 @@ Read this document first, then inspect the current repository; code overrides ou
 | 2026-09-21 | Added UI/UX V2 Stage 1 shared design system. | Adds theme-aware tokens and reusable cards, buttons, headers, sections, chips, forms, empty states and status presentation; no business behavior or schema changed. |
 | 2026-09-21 | Completed the staged UI/UX V2 migration and polish pass. | Home, Tasks, Vehicles, Personal Expenses, Reminders, Settings/About and vehicle forms use the shared semantic system and icon-only headers; accessibility and touch targets were standardized without a migration. |
 | 2026-09-21 | Recorded Backup & Restore as the next planned capability. | Future transfer must include SQLite data and LifePilot-owned photos/documents; cloud account/sync remains later work. |
+| 2026-09-21 | Implemented and audited Backup & Restore V1. | Adds checksummed portable packages, safe inspection, isolated migration, coordinated replacement/rollback, cross-device path rebasing and restart locking without a schema or dependency change. |
 
 Documentation maintenance rule: update affected sections of this file in the **same work** as any significant implementation or architectural change. Do not rewrite it wholesale; verify paths, versions, implemented status and known issues against source each time. Never add credentials, tokens, signing passwords, private keys or environment secrets.
 

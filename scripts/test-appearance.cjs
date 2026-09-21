@@ -385,6 +385,7 @@ test('root theme updates retain SQLite setup identities and update navigation co
     '@/database/migrate': { migrateDatabase },
     '@/features/reminders/reminder-provider': { ReminderProvider: 'ReminderProvider' },
     '@/features/tasks/task-provider': { TaskProvider: 'TaskProvider' },
+    '@/features/backup/restore-coordinator': { RestoreCoordinator: 'RestoreCoordinator' },
   });
   const render = root.default().props.children.type;
   const first = render();
@@ -396,7 +397,7 @@ test('root theme updates retain SQLite setup identities and update navigation co
       assert.equal(next.props[prop], first.props[prop], prop);
     }
     assert.equal(next.props.children.type, first.props.children.type);
-    const navigation = next.props.children.type();
+    const navigation = next.props.children.props.children.type();
     assert.equal(navigation.props.value.colors.primary, resolved.colors.primary);
   }
 });

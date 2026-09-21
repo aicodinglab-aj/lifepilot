@@ -10,6 +10,7 @@ import { lifePilotColors } from '@/constants/lifepilot-theme';
 import { migrateDatabase } from '@/database/migrate';
 import { ReminderProvider } from '@/features/reminders/reminder-provider';
 import { TaskProvider } from '@/features/tasks/task-provider';
+import { RestoreCoordinator } from '@/features/backup/restore-coordinator';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -44,7 +45,7 @@ function RootLayout() {
       options={databaseOptions}
       onError={(error) => setDatabaseError(error.message)}
       onInit={migrateDatabase}>
-      <ThemedNavigation />
+      <RestoreCoordinator><ThemedNavigation /></RestoreCoordinator>
     </SQLiteProvider>
   );
 }
