@@ -1,3 +1,4 @@
+import { withOperation, type OperationContext } from '@/features/activity/operation-lifecycle';
 import { Platform } from 'react-native';
 import { loadNotificationRuntime } from '@/features/notifications/runtime';
 import { NOTIFICATION_OWNER, NOTIFICATION_PREFIX } from './reminder';
@@ -6,14 +7,16 @@ import { reminderTestEnabled } from './test-build';
 
 export const REMINDER_CHANNEL = 'vehicle-reminders';
 export const TEST_NOTIFICATION_OWNER = 'lifepilot.vehicle-reminders.test';
-export async function configureReminderChannel() {
-  const Notifications = await loadNotificationRuntime();
-  if (!Notifications) return;
-  if (Platform.OS === 'android') await Notifications.setNotificationChannelAsync(REMINDER_CHANNEL, {
-    name: 'Vehicle reminders', description: 'Insurance, PUC and service due dates',
-    importance: Notifications.AndroidImportance.DEFAULT, sound: 'default',
-    lockscreenVisibility: Notifications.AndroidNotificationVisibility.PRIVATE,
-  });
+export async function configureReminderChannel(context?: OperationContext) {
+  return withOperation(async () => {
+    const Notifications = await loadNotificationRuntime();
+    if (!Notifications) return;
+    if (Platform.OS === 'android') await Notifications.setNotificationChannelAsync(REMINDER_CHANNEL, {
+      name: 'Vehicle reminders', description: 'Insurance, PUC and service due dates',
+      importance: Notifications.AndroidImportance.DEFAULT, sound: 'default',
+      lockscreenVisibility: Notifications.AndroidNotificationVisibility.PRIVATE,
+    });
+  }, context);
 }
 export async function notificationPermission(): Promise<ReminderPermission> {
   const Notifications = await loadNotificationRuntime();
@@ -30,12 +33,14 @@ export async function notificationPermission(): Promise<ReminderPermission> {
   }
   return result.status === 'undetermined' && result.canAskAgain ? 'undetermined' : 'denied';
 }
-export async function requestNativeReminderPermission() {
-  const Notifications = await loadNotificationRuntime();
-  if (!Notifications) return 'unavailable' as const;
-  await configureReminderChannel();
-  await Notifications.requestPermissionsAsync({ ios: { allowAlert: true, allowSound: true, allowBadge: false } });
-  return notificationPermission();
+export async function requestNativeReminderPermission(context?: OperationContext) {
+  return withOperation(async (operation) => {
+    const Notifications = await loadNotificationRuntime();
+    if (!Notifications) return 'unavailable' as const;
+    await configureReminderChannel(operation);
+    await Notifications.requestPermissionsAsync({ ios: { allowAlert: true, allowSound: true, allowBadge: false } });
+    return notificationPermission();
+  }, context);
 }
 export const notificationAdapter: NotificationAdapter = {
   capacity: Platform.OS === 'ios' ? 60 : 450,
@@ -61,18 +66,20 @@ export const notificationAdapter: NotificationAdapter = {
     });
   },
 };
-export async function scheduleDebugReminder() {
-  if (!reminderTestEnabled) throw new Error('Test notifications are only available in preview or development builds.');
-  const Notifications = await loadNotificationRuntime();
-  if (!Notifications) throw new Error('Test notifications require a development or preview build.');
-  await configureReminderChannel();
-  const permission = await notificationPermission();
-  if (permission === 'channel-disabled') throw new Error('Enable the Vehicle reminders channel in device notification settings first.');
-  if (permission !== 'granted') throw new Error('Enable notifications above, or allow them in device settings, then try again.');
-  await Notifications.scheduleNotificationAsync({ identifier: `${TEST_NOTIFICATION_OWNER}:short-delay`,
-    content: { title: 'LifePilot test', body: 'Local notification test. No vehicle data was changed.', data: { owner: TEST_NOTIFICATION_OWNER }, sound: 'default' },
-    trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 10, repeats: false, channelId: REMINDER_CHANNEL },
-  });
+export async function scheduleDebugReminder(context?: OperationContext) {
+  return withOperation(async (operation) => {
+    if (!reminderTestEnabled) throw new Error('Test notifications are only available in preview or development builds.');
+    const Notifications = await loadNotificationRuntime();
+    if (!Notifications) throw new Error('Test notifications require a development or preview build.');
+    await configureReminderChannel(operation);
+    const permission = await notificationPermission();
+    if (permission === 'channel-disabled') throw new Error('Enable the Vehicle reminders channel in device notification settings first.');
+    if (permission !== 'granted') throw new Error('Enable notifications above, or allow them in device settings, then try again.');
+    await Notifications.scheduleNotificationAsync({ identifier: `${TEST_NOTIFICATION_OWNER}:short-delay`,
+      content: { title: 'LifePilot test', body: 'Local notification test. No vehicle data was changed.', data: { owner: TEST_NOTIFICATION_OWNER }, sound: 'default' },
+      trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 10, repeats: false, channelId: REMINDER_CHANNEL },
+    });
+  }, context);
 }
 export async function installReminderNotificationHandler() {
   const Notifications = await loadNotificationRuntime();

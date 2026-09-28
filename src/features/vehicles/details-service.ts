@@ -1,10 +1,13 @@
+import { withOperation, type OperationContext } from '@/features/activity/operation-lifecycle';
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { updateVehicle } from '@/database/vehicles';
 import { detailsFormToVehicle, validateVehicleDetails, type VehicleDetailsForm } from './vehicle-details';
 import { withVehicleOperation } from './vehicle-operation';
 
-export async function saveVehicleDetails(db: SQLiteDatabase, vehicleId: number, form: VehicleDetailsForm) {
-  const errors = validateVehicleDetails(form);
-  if (Object.keys(errors).length) throw new Error(Object.values(errors)[0]);
-  await withVehicleOperation(vehicleId, () => updateVehicle(db, vehicleId, detailsFormToVehicle(form)));
+export async function saveVehicleDetails(db: SQLiteDatabase, vehicleId: number, form: VehicleDetailsForm, context?: OperationContext) {
+  return withOperation(async (operation) => {
+    const errors = validateVehicleDetails(form);
+    if (Object.keys(errors).length) throw new Error(Object.values(errors)[0]);
+    await withVehicleOperation(vehicleId, () => updateVehicle(db, vehicleId, detailsFormToVehicle(form), operation), operation);
+  }, context);
 }

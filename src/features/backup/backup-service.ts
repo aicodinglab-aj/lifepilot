@@ -1,3 +1,4 @@
+import { withOperation, type OperationContext } from '@/features/activity/operation-lifecycle';
 import Constants from 'expo-constants';
 import { CryptoDigestAlgorithm, digest } from 'expo-crypto';
 import { Directory, File, Paths } from 'expo-file-system';
@@ -50,37 +51,39 @@ async function verifyPackage(pkg: BackupPackage) {
   }
 }
 
-export async function createBackup(db: SQLiteDatabase, options: CreateBackupOptions = {}): Promise<BackupResult> {
-  const staging = new Directory(Paths.cache, 'lifepilot-backup-staging');
-  const createdAt = (options.now ?? new Date()).toISOString();
-  const output = options.destination ?? new File(Paths.document, `LifePilot-${createdAt.replace(/[:.]/g, '-')}.lpbackup`);
-  if (output.exists) throw new BackupError('package', 'Backup destination already exists.');
-  try {
-    if (staging.exists) staging.delete(); staging.create({ intermediates: true });
-    let database: Uint8Array;
-    try { database = await db.serializeAsync(); } catch { throw new BackupError('snapshot', 'Could not create a consistent database snapshot.'); }
-    const schema = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
-    const files: { path: string; file: File }[] = []; discover(new Directory(Paths.document, OWNED_ROOT), OWNED_ROOT, files);
-    const payloads: Record<string, string> = { [BACKUP_DATABASE_PATH]: bytesToBase64(database) };
-    const entries: BackupManifestEntry[] = [{ path: BACKUP_DATABASE_PATH, kind: 'database', size: database.length, sha256: await sha256(database) }];
-    for (const item of files.sort((a, b) => a.path.localeCompare(b.path))) {
-      let bytes: Uint8Array; try { bytes = await item.file.bytes(); } catch { throw new BackupError('file-read', 'A persistent LifePilot file could not be read.'); }
-      payloads[item.path] = bytesToBase64(bytes); entries.push({ path: item.path, kind: 'persistent-file', size: bytes.length, sha256: await sha256(bytes) });
-    }
-    const manifest = createManifest({ createdAt, appVersion: Constants.expoConfig?.version ?? 'unknown', appBuildVersion: Constants.nativeBuildVersion ?? null,
-      database: { path: BACKUP_DATABASE_PATH, schemaVersion: schema?.user_version ?? 0 }, entries });
-    const staged = new File(staging, 'backup.lpbackup'); staged.create(); staged.write(JSON.stringify({ manifest, payloads } satisfies BackupPackage));
-    await verifyBackup(staged); await staged.copy(output); await verifyBackup(output);
-    try { staging.delete(); } catch {
+export async function createBackup(db: SQLiteDatabase, options: CreateBackupOptions = {}, context?: OperationContext): Promise<BackupResult> {
+  return withOperation(async () => {
+    const staging = new Directory(Paths.cache, 'lifepilot-backup-staging');
+    const createdAt = (options.now ?? new Date()).toISOString();
+    const output = options.destination ?? new File(Paths.document, `LifePilot-${createdAt.replace(/[:.]/g, '-')}.lpbackup`);
+    if (output.exists) throw new BackupError('package', 'Backup destination already exists.');
+    try {
+      if (staging.exists) staging.delete(); staging.create({ intermediates: true });
+      let database: Uint8Array;
+      try { database = await db.serializeAsync(); } catch { throw new BackupError('snapshot', 'Could not create a consistent database snapshot.'); }
+      const schema = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
+      const files: { path: string; file: File }[] = []; discover(new Directory(Paths.document, OWNED_ROOT), OWNED_ROOT, files);
+      const payloads: Record<string, string> = { [BACKUP_DATABASE_PATH]: bytesToBase64(database) };
+      const entries: BackupManifestEntry[] = [{ path: BACKUP_DATABASE_PATH, kind: 'database', size: database.length, sha256: await sha256(database) }];
+      for (const item of files.sort((a, b) => a.path.localeCompare(b.path))) {
+        let bytes: Uint8Array; try { bytes = await item.file.bytes(); } catch { throw new BackupError('file-read', 'A persistent LifePilot file could not be read.'); }
+        payloads[item.path] = bytesToBase64(bytes); entries.push({ path: item.path, kind: 'persistent-file', size: bytes.length, sha256: await sha256(bytes) });
+      }
+      const manifest = createManifest({ createdAt, appVersion: Constants.expoConfig?.version ?? 'unknown', appBuildVersion: Constants.nativeBuildVersion ?? null,
+        database: { path: BACKUP_DATABASE_PATH, schemaVersion: schema?.user_version ?? 0 }, entries });
+      const staged = new File(staging, 'backup.lpbackup'); staged.create(); staged.write(JSON.stringify({ manifest, payloads } satisfies BackupPackage));
+      await verifyBackup(staged); await staged.copy(output); await verifyBackup(output);
+      try { staging.delete(); } catch {
+        if (output.exists) output.delete();
+        throw new BackupError('cleanup', 'Backup staging cleanup failed.');
+      }
+      return { file: output, manifest };
+    } catch (error) {
       if (output.exists) output.delete();
-      throw new BackupError('cleanup', 'Backup staging cleanup failed.');
+      if (error instanceof BackupError) throw error;
+      throw new BackupError('package', 'LifePilot backup creation failed.');
+    } finally {
+      try { if (staging.exists) staging.delete(); } catch { /* Preserve the primary typed failure; source data is never touched. */ }
     }
-    return { file: output, manifest };
-  } catch (error) {
-    if (output.exists) output.delete();
-    if (error instanceof BackupError) throw error;
-    throw new BackupError('package', 'LifePilot backup creation failed.');
-  } finally {
-    try { if (staging.exists) staging.delete(); } catch { /* Preserve the primary typed failure; source data is never touched. */ }
-  }
+  }, context);
 }

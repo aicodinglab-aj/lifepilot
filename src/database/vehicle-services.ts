@@ -1,3 +1,4 @@
+import { withOperation, type OperationContext } from '@/features/activity/operation-lifecycle';
 import { openDatabaseAsync, type SQLiteDatabase } from 'expo-sqlite';
 import type { ServiceBill, ServiceDraft, ServiceRecord } from '@/features/vehicles/service-record';
 
@@ -46,37 +47,45 @@ async function transaction(db: SQLiteDatabase, action: (tx: SQLiteDatabase) => P
     await tx.withTransactionAsync(() => action(tx));
   } finally { await tx.closeAsync(); }
 }
-export async function insertService(db: SQLiteDatabase, vehicleId: number, id: string, draft: ServiceDraft, bills: ServiceBill[]) {
-  await transaction(db, async (tx) => {
-    const now = new Date().toISOString();
-    await tx.runAsync(`INSERT INTO vehicle_services (id, vehicle_id, service_date, odometer, title, workshop,
-      description, parts_cost, labour_cost, other_cost, next_service_date, next_service_odometer, notes, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [id, vehicleId, draft.serviceDate, draft.odometer, draft.title, draft.workshop, draft.description,
-      draft.partsCost, draft.labourCost, draft.otherCost, draft.nextServiceDate, draft.nextServiceOdometer, draft.notes, now, now]);
-    for (const bill of bills) {
-      if (bill.vehicleId !== vehicleId || bill.serviceId !== id) throw new Error('Invalid bill owner.');
-      await tx.runAsync(`INSERT INTO service_bill_photos (id, vehicle_id, service_id, local_uri, created_at) VALUES (?, ?, ?, ?, ?)`,
-        [bill.id, vehicleId, id, bill.localUri, bill.createdAt]);
-    }
-    await clearServiceCleanup(tx, vehicleId, id);
-  });
+export async function insertService(db: SQLiteDatabase, vehicleId: number, id: string, draft: ServiceDraft, bills: ServiceBill[], context?: OperationContext) {
+  return withOperation(async (operation) => {
+    await transaction(db, async (tx) => {
+      const now = new Date().toISOString();
+      await tx.runAsync(`INSERT INTO vehicle_services (id, vehicle_id, service_date, odometer, title, workshop,
+        description, parts_cost, labour_cost, other_cost, next_service_date, next_service_odometer, notes, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [id, vehicleId, draft.serviceDate, draft.odometer, draft.title, draft.workshop, draft.description,
+        draft.partsCost, draft.labourCost, draft.otherCost, draft.nextServiceDate, draft.nextServiceOdometer, draft.notes, now, now]);
+      for (const bill of bills) {
+        if (bill.vehicleId !== vehicleId || bill.serviceId !== id) throw new Error('Invalid bill owner.');
+        await tx.runAsync(`INSERT INTO service_bill_photos (id, vehicle_id, service_id, local_uri, created_at) VALUES (?, ?, ?, ?, ?)`,
+          [bill.id, vehicleId, id, bill.localUri, bill.createdAt]);
+      }
+      await clearServiceCleanup(tx, vehicleId, id, operation);
+    });
+  }, context);
 }
-export async function deleteServiceRecord(db: SQLiteDatabase, vehicleId: number, serviceId: string) {
-  // The trigger queues cleanup in the same transaction; FK cascades remove only this service's bills.
-  await transaction(db, async (tx) => {
-    await tx.runAsync('DELETE FROM vehicle_services WHERE vehicle_id = ? AND id = ?', [vehicleId, serviceId]);
-  });
+export async function deleteServiceRecord(db: SQLiteDatabase, vehicleId: number, serviceId: string, context?: OperationContext) {
+  return withOperation(async () => {
+    // The trigger queues cleanup in the same transaction; FK cascades remove only this service's bills.
+    await transaction(db, async (tx) => {
+      await tx.runAsync('DELETE FROM vehicle_services WHERE vehicle_id = ? AND id = ?', [vehicleId, serviceId]);
+    });
+  }, context);
 }
-export async function queueServiceCleanup(db: SQLiteDatabase, vehicleId: number, serviceId: string) {
-  await db.runAsync('INSERT INTO service_bill_cleanup (vehicle_id, service_id, created_at) VALUES (?, ?, ?)',
-    [vehicleId, serviceId, new Date().toISOString()]);
+export async function queueServiceCleanup(db: SQLiteDatabase, vehicleId: number, serviceId: string, context?: OperationContext) {
+  return withOperation(async () => {
+    await db.runAsync('INSERT INTO service_bill_cleanup (vehicle_id, service_id, created_at) VALUES (?, ?, ?)',
+      [vehicleId, serviceId, new Date().toISOString()]);
+  }, context);
 }
 export function getServiceCleanup(db: SQLiteDatabase, vehicleId?: number) {
   return db.getAllAsync<{ vehicleId: number; serviceId: string }>(
     `SELECT vehicle_id AS vehicleId, service_id AS serviceId FROM service_bill_cleanup ${vehicleId == null ? '' : 'WHERE vehicle_id = ?'}`,
     vehicleId == null ? [] : [vehicleId]);
 }
-export async function clearServiceCleanup(db: SQLiteDatabase, vehicleId: number, serviceId: string) {
-  await db.runAsync('DELETE FROM service_bill_cleanup WHERE vehicle_id = ? AND service_id = ?', [vehicleId, serviceId]);
+export async function clearServiceCleanup(db: SQLiteDatabase, vehicleId: number, serviceId: string, context?: OperationContext) {
+  return withOperation(async () => {
+    await db.runAsync('DELETE FROM service_bill_cleanup WHERE vehicle_id = ? AND service_id = ?', [vehicleId, serviceId]);
+  }, context);
 }

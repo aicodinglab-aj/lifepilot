@@ -11,6 +11,7 @@ function load(relative, mocks = {}, runtime = {}) {
   const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText;
   const exports = {};
   vm.runInNewContext(code, { exports, Error, __DEV__: false, process: { env: {} }, ...runtime, require: (name) => {
+    if (name === '@/features/activity/operation-lifecycle') return require('./helpers/load-typescript.cjs').activity;
     if (name in mocks) return mocks[name];
     if (name === './vehicle-operation') return load('src/features/vehicles/vehicle-operation.ts');
     throw new Error(`Unexpected runtime dependency: ${name}`);

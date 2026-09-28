@@ -14,6 +14,7 @@ function load(relative, mocks = {}) {
   }).outputText;
   const exports = {};
   vm.runInNewContext(code, { exports, Error, require: (name) => {
+    if (name === '@/features/activity/operation-lifecycle') return require('./helpers/load-typescript.cjs').activity;
     if (name in mocks) return mocks[name];
     throw new Error(`Unexpected dependency: ${name}`);
   } });

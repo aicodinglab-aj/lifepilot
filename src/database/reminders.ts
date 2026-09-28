@@ -1,3 +1,4 @@
+import { withOperation, type OperationContext } from '@/features/activity/operation-lifecycle';
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { calendarDay } from '@/features/vehicles/coverage-status';
 import { isReminderType, type PlannedNotification, type ReminderInterval, type ReminderPreferences, type ReminderSource, type ReminderType } from '@/features/reminders/reminder';
@@ -41,46 +42,60 @@ export async function getReminderPreferences(db: SQLiteDatabase) {
   if (!value) throw new Error('Reminder settings are unavailable.');
   return value;
 }
-export async function setReminderInterval(db: SQLiteDatabase, type: ReminderType, offset: number, enabled: boolean) {
-  if (!isReminderType(type) || !Number.isSafeInteger(offset) || offset < 0 || offset > 36500) throw new Error('Invalid reminder interval.');
-  await db.runAsync(`INSERT INTO reminder_intervals(source_type, offset_days, enabled, updated_at) VALUES (?, ?, ?, ?)
-    ON CONFLICT(source_type, offset_days) DO UPDATE SET enabled = excluded.enabled, updated_at = excluded.updated_at`,
-    [type, offset, enabled ? 1 : 0, new Date().toISOString()]);
+export async function setReminderInterval(db: SQLiteDatabase, type: ReminderType, offset: number, enabled: boolean, context?: OperationContext) {
+  return withOperation(async () => {
+    if (!isReminderType(type) || !Number.isSafeInteger(offset) || offset < 0 || offset > 36500) throw new Error('Invalid reminder interval.');
+    await db.runAsync(`INSERT INTO reminder_intervals(source_type, offset_days, enabled, updated_at) VALUES (?, ?, ?, ?)
+      ON CONFLICT(source_type, offset_days) DO UPDATE SET enabled = excluded.enabled, updated_at = excluded.updated_at`,
+      [type, offset, enabled ? 1 : 0, new Date().toISOString()]);
+  }, context);
 }
-export async function setReminderPreferences(db: SQLiteDatabase, enabled: boolean, threshold: number) {
-  if (!Number.isFinite(threshold) || threshold < 0 || threshold > 1000000) throw new Error('Enter a mileage warning threshold between 0 and 1,000,000 km.');
-  await db.runAsync('UPDATE reminder_preferences SET notifications_enabled = ?, mileage_threshold = ?, updated_at = ? WHERE id = 1',
-    [enabled ? 1 : 0, threshold, new Date().toISOString()]);
+export async function setReminderPreferences(db: SQLiteDatabase, enabled: boolean, threshold: number, context?: OperationContext) {
+  return withOperation(async () => {
+    if (!Number.isFinite(threshold) || threshold < 0 || threshold > 1000000) throw new Error('Enter a mileage warning threshold between 0 and 1,000,000 km.');
+    await db.runAsync('UPDATE reminder_preferences SET notifications_enabled = ?, mileage_threshold = ?, updated_at = ? WHERE id = 1',
+      [enabled ? 1 : 0, threshold, new Date().toISOString()]);
+  }, context);
 }
-export async function markPermissionRequested(db: SQLiteDatabase) {
-  await db.runAsync('UPDATE reminder_preferences SET permission_requested = 1, updated_at = ? WHERE id = 1', [new Date().toISOString()]);
+export async function markPermissionRequested(db: SQLiteDatabase, context?: OperationContext) {
+  return withOperation(async () => {
+    await db.runAsync('UPDATE reminder_preferences SET permission_requested = 1, updated_at = ? WHERE id = 1', [new Date().toISOString()]);
+  }, context);
 }
 export type ScheduledReminder = Pick<PlannedNotification, 'notificationId' | 'fingerprint' | 'fireAt'>;
 export function getScheduledReminders(db: SQLiteDatabase) {
   return db.getAllAsync<ScheduledReminder>('SELECT notification_id AS notificationId, fingerprint, fire_at AS fireAt FROM vehicle_reminder_schedule');
 }
-export async function removeScheduledReminder(db: SQLiteDatabase, id: string) {
-  await db.runAsync('DELETE FROM vehicle_reminder_schedule WHERE notification_id = ?', [id]);
+export async function removeScheduledReminder(db: SQLiteDatabase, id: string, context?: OperationContext) {
+  return withOperation(async () => {
+    await db.runAsync('DELETE FROM vehicle_reminder_schedule WHERE notification_id = ?', [id]);
+  }, context);
 }
-export async function persistPlannedReminder(db: SQLiteDatabase, item: PlannedNotification, revision: number) {
-  // A concurrent source edit/delete or settings change cannot revive a stale schedule row.
-  const now = new Date().toISOString();
-  const result = await db.runAsync(`INSERT INTO vehicle_reminder_schedule
-    (notification_id, source_id, source_type, due_date, offset_days, fire_at, fingerprint, created_at, updated_at)
-    SELECT ?, s.id, s.source_type, ?, ?, ?, ?, ?, ? FROM vehicle_reminder_sources s
-    JOIN reminder_intervals i ON i.source_type = s.source_type AND i.offset_days = ?
-    WHERE s.id = ? AND i.enabled = 1 AND (SELECT revision FROM reminder_change_state WHERE id = 1) = ?
-    ON CONFLICT(notification_id) DO UPDATE SET fingerprint = excluded.fingerprint, fire_at = excluded.fire_at,
-      due_date = excluded.due_date, updated_at = excluded.updated_at`,
-    [item.notificationId, item.dueDate, item.offsetDays, item.fireAt, item.fingerprint, now, now, item.offsetDays, item.sourceId, revision]);
-  return result.changes === 1;
+export async function persistPlannedReminder(db: SQLiteDatabase, item: PlannedNotification, revision: number, context?: OperationContext) {
+  return withOperation(async () => {
+    // A concurrent source edit/delete or settings change cannot revive a stale schedule row.
+    const now = new Date().toISOString();
+    const result = await db.runAsync(`INSERT INTO vehicle_reminder_schedule
+      (notification_id, source_id, source_type, due_date, offset_days, fire_at, fingerprint, created_at, updated_at)
+      SELECT ?, s.id, s.source_type, ?, ?, ?, ?, ?, ? FROM vehicle_reminder_sources s
+      JOIN reminder_intervals i ON i.source_type = s.source_type AND i.offset_days = ?
+      WHERE s.id = ? AND i.enabled = 1 AND (SELECT revision FROM reminder_change_state WHERE id = 1) = ?
+      ON CONFLICT(notification_id) DO UPDATE SET fingerprint = excluded.fingerprint, fire_at = excluded.fire_at,
+        due_date = excluded.due_date, updated_at = excluded.updated_at`,
+      [item.notificationId, item.dueDate, item.offsetDays, item.fireAt, item.fingerprint, now, now, item.offsetDays, item.sourceId, revision]);
+    return result.changes === 1;
+  }, context);
 }
-export async function queueNotificationCleanup(db: SQLiteDatabase, id: string) {
-  await db.runAsync('INSERT OR IGNORE INTO reminder_notification_cleanup(notification_id, created_at) VALUES (?, ?)', [id, new Date().toISOString()]);
+export async function queueNotificationCleanup(db: SQLiteDatabase, id: string, context?: OperationContext) {
+  return withOperation(async () => {
+    await db.runAsync('INSERT OR IGNORE INTO reminder_notification_cleanup(notification_id, created_at) VALUES (?, ?)', [id, new Date().toISOString()]);
+  }, context);
 }
 export function getNotificationCleanup(db: SQLiteDatabase) {
   return db.getAllAsync<{ notificationId: string }>('SELECT notification_id AS notificationId FROM reminder_notification_cleanup');
 }
-export async function clearNotificationCleanup(db: SQLiteDatabase, id: string) {
-  await db.runAsync('DELETE FROM reminder_notification_cleanup WHERE notification_id = ?', [id]);
+export async function clearNotificationCleanup(db: SQLiteDatabase, id: string, context?: OperationContext) {
+  return withOperation(async () => {
+    await db.runAsync('DELETE FROM reminder_notification_cleanup WHERE notification_id = ?', [id]);
+  }, context);
 }

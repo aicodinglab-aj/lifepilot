@@ -1,3 +1,4 @@
+import { withOperation, type OperationContext } from '@/features/activity/operation-lifecycle';
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { validateTransaction, type Category, type Transaction, type TransactionInput, type TransactionType } from '@/features/personal/transaction';
 import { localToday, monthRange } from '@/features/personal/date';
@@ -22,24 +23,28 @@ export async function getTransaction(db: SQLiteDatabase, id: number) {
   const row = await db.getFirstAsync<Transaction>(`SELECT ${columns} FROM ${joined} WHERE t.id = ?`, [id]);
   return row ? checkedTransaction(row) : null;
 }
-export async function saveTransaction(db: SQLiteDatabase, input: TransactionInput, id?: number) {
-  const draft = validateTransaction(input, await getCategories(db));
-  const now = new Date().toISOString();
-  const values = [draft.type, draft.amount, draft.categoryId, draft.transactionDate, draft.description, draft.paymentMethod, draft.notes, now];
-  if (id !== undefined) {
-    const result = await db.runAsync(`UPDATE personal_transactions SET type = ?, amount = ?, category_id = ?,
-      transaction_date = ?, description = ?, payment_method = ?, notes = ?, updated_at = ? WHERE id = ?`, [...values, id]);
-    if (result.changes !== 1) throw new Error('This transaction no longer exists.');
-    return id;
-  }
-  const result = await db.runAsync(`INSERT INTO personal_transactions
-    (type, amount, category_id, transaction_date, description, payment_method, notes, updated_at, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, [...values, now]);
-  return result.lastInsertRowId;
+export async function saveTransaction(db: SQLiteDatabase, input: TransactionInput, id?: number, context?: OperationContext) {
+  return withOperation(async () => {
+    const draft = validateTransaction(input, await getCategories(db));
+    const now = new Date().toISOString();
+    const values = [draft.type, draft.amount, draft.categoryId, draft.transactionDate, draft.description, draft.paymentMethod, draft.notes, now];
+    if (id !== undefined) {
+      const result = await db.runAsync(`UPDATE personal_transactions SET type = ?, amount = ?, category_id = ?,
+        transaction_date = ?, description = ?, payment_method = ?, notes = ?, updated_at = ? WHERE id = ?`, [...values, id]);
+      if (result.changes !== 1) throw new Error('This transaction no longer exists.');
+      return id;
+    }
+    const result = await db.runAsync(`INSERT INTO personal_transactions
+      (type, amount, category_id, transaction_date, description, payment_method, notes, updated_at, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, [...values, now]);
+    return result.lastInsertRowId;
+  }, context);
 }
-export async function deleteTransaction(db: SQLiteDatabase, id: number) {
-  const result = await db.runAsync('DELETE FROM personal_transactions WHERE id = ?', [id]);
-  if (result.changes !== 1) throw new Error('This transaction no longer exists.');
+export async function deleteTransaction(db: SQLiteDatabase, id: number, context?: OperationContext) {
+  return withOperation(async () => {
+    const result = await db.runAsync('DELETE FROM personal_transactions WHERE id = ?', [id]);
+    if (result.changes !== 1) throw new Error('This transaction no longer exists.');
+  }, context);
 }
 export type HistoryFilter = { type?: TransactionType; month?: string; categoryId?: string };
 export async function getTransactions(db: SQLiteDatabase, filter: HistoryFilter = {}, cursor?: Pick<Transaction, 'transactionDate' | 'id'>, limit = PERSONAL_PAGE_SIZE) {

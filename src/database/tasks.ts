@@ -1,3 +1,4 @@
+import { withOperation, type OperationContext } from '@/features/activity/operation-lifecycle';
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { normalizeTask, type Task, type TaskDraft, type TaskView, type Priority } from '@/features/tasks/task';
 
@@ -31,25 +32,30 @@ export function getTaskSummary(db: SQLiteDatabase, today: string) {
     COUNT(CASE WHEN completed = 1 THEN 1 END) AS completed,
     COUNT(CASE WHEN completed = 0 AND due_date < ? THEN 1 END) AS overdue FROM tasks`, [today, today, today]);
 }
-export async function saveTask(db: SQLiteDatabase, input: TaskDraft, id?: number) {
-  const task = normalizeTask(input), now = new Date().toISOString();
-  const values = [task.title, task.description, task.categoryId, task.priority, task.dueDate, task.dueTime, task.reminderEnabled, now];
-  if (id != null) {
-    const result = await db.runAsync(`UPDATE tasks SET title = ?, description = ?, category_id = ?, priority = ?,
-      due_date = ?, due_time = ?, reminder_enabled = ?, updated_at = ? WHERE id = ?`, [...values, id]);
+export async function saveTask(db: SQLiteDatabase, input: TaskDraft, id?: number, context?: OperationContext) {
+  return withOperation(async () => {
+    const task = normalizeTask(input), now = new Date().toISOString();
+    const values = [task.title, task.description, task.categoryId, task.priority, task.dueDate, task.dueTime, task.reminderEnabled, now];
+    if (id != null) {
+      const result = await db.runAsync(`UPDATE tasks SET title = ?, description = ?, category_id = ?, priority = ?,
+        due_date = ?, due_time = ?, reminder_enabled = ?, updated_at = ? WHERE id = ?`, [...values, id]);
+      if (!result.changes) throw new Error('This task no longer exists.');
+      return id;
+    }
+    const result = await db.runAsync(`INSERT INTO tasks (title, description, category_id, priority, due_date, due_time,
+      reminder_enabled, updated_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, [...values, now]);
+    return result.lastInsertRowId;
+  }, context);
+}
+export async function completeTask(db: SQLiteDatabase, id: number, completed: boolean, context?: OperationContext) {
+  return withOperation(async () => {
+    const now = new Date().toISOString();
+    const result = await db.runAsync('UPDATE tasks SET completed = ?, completed_at = ?, updated_at = ? WHERE id = ?', [completed ? 1 : 0, completed ? now : null, now, id]);
     if (!result.changes) throw new Error('This task no longer exists.');
-    return id;
-  }
-  const result = await db.runAsync(`INSERT INTO tasks (title, description, category_id, priority, due_date, due_time,
-    reminder_enabled, updated_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, [...values, now]);
-  return result.lastInsertRowId;
+  }, context);
 }
-export async function completeTask(db: SQLiteDatabase, id: number, completed: boolean) {
-  const now = new Date().toISOString();
-  const result = await db.runAsync('UPDATE tasks SET completed = ?, completed_at = ?, updated_at = ? WHERE id = ?', [completed ? 1 : 0, completed ? now : null, now, id]);
-  if (!result.changes) throw new Error('This task no longer exists.');
-}
-export const deleteTask = (db: SQLiteDatabase, id: number) => db.runAsync('DELETE FROM tasks WHERE id = ?', [id]);
+export const deleteTask = (db: SQLiteDatabase, id: number, context?: OperationContext) =>
+  withOperation(async () => db.runAsync('DELETE FROM tasks WHERE id = ?', [id]), context);
 export function getTaskReminderCandidates(db: SQLiteDatabase, today: string, offset = 0) {
   return db.getAllAsync<Task>(`SELECT ${columns} ${from} WHERE t.completed = 0 AND t.reminder_enabled = 1
     AND t.due_date >= ? AND t.due_time IS NOT NULL ORDER BY t.due_date, t.due_time, t.id LIMIT 100 OFFSET ?`, [today, offset]);

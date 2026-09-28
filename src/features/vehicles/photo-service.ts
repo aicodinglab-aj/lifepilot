@@ -1,3 +1,4 @@
+import { withOperation, type OperationContext } from '@/features/activity/operation-lifecycle';
 import { randomUUID } from 'expo-crypto';
 import * as ImagePicker from 'expo-image-picker';
 import type { SQLiteDatabase } from 'expo-sqlite';
@@ -38,74 +39,86 @@ export async function pickVehiclePhotos(camera: boolean, cover = false): Promise
   return result.assets.map((asset) => ({ id: randomUUID(), uri: asset.uri }));
 }
 
-export async function addVehiclePhotos(db: SQLiteDatabase, vehicleId: number, camera: boolean) {
-  await saveSelectedVehiclePhotos(db, vehicleId, await pickVehiclePhotos(camera));
+export async function addVehiclePhotos(db: SQLiteDatabase, vehicleId: number, camera: boolean, context?: OperationContext) {
+  return withOperation(async (operation) => {
+    await saveSelectedVehiclePhotos(db, vehicleId, await pickVehiclePhotos(camera), undefined, operation);
+  }, context);
 }
 
-export async function addVehicleCoverPhoto(db: SQLiteDatabase, vehicleId: number, camera: boolean) {
-  const photos = await pickVehiclePhotos(camera, true);
-  if (!photos.length) return;
-  await withVehicleOperation(vehicleId, () => savePhotos(db, vehicleId, photos.slice(0, 1), undefined, true));
+export async function addVehicleCoverPhoto(db: SQLiteDatabase, vehicleId: number, camera: boolean, context?: OperationContext) {
+  return withOperation(async (operation) => {
+    const photos = await pickVehiclePhotos(camera, true);
+    if (!photos.length) return;
+    await withVehicleOperation(vehicleId, () => savePhotos(db, vehicleId, photos.slice(0, 1), undefined, true, operation), operation);
+  }, context);
 }
 
 export async function saveSelectedVehiclePhotos(
-  db: SQLiteDatabase, vehicleId: number, photos: SelectedVehiclePhoto[], coverId?: string,
+  db: SQLiteDatabase, vehicleId: number, photos: SelectedVehiclePhoto[], coverId?: string, context?: OperationContext
 ) {
-  return withVehicleOperation(vehicleId, () => savePhotos(db, vehicleId, photos, coverId));
+  return withOperation(async (operation) => {
+    return withVehicleOperation(vehicleId, () => savePhotos(db, vehicleId, photos, coverId, undefined, operation), operation);
+  }, context);
 }
 
 async function savePhotos(
-  db: SQLiteDatabase, vehicleId: number, photos: SelectedVehiclePhoto[], coverId?: string, makeCover = false,
+  db: SQLiteDatabase, vehicleId: number, photos: SelectedVehiclePhoto[], coverId?: string, makeCover = false, context?: OperationContext
 ) {
-  if (!await db.getFirstAsync('SELECT id FROM vehicles WHERE id = ?', [vehicleId])) {
-    throw new Error('This vehicle no longer exists.');
-  }
-  // Save the selected cover first so a new vehicle gets the correct cover even
-  // if a later image fails. Existing galleries retain their current cover.
-  const ordered = coverId
-    ? [...photos.filter((photo) => photo.id === coverId), ...photos.filter((photo) => photo.id !== coverId)]
-    : photos;
-  let saved = 0;
-  for (const asset of ordered) {
-    const id = asset.id;
-    let uri: string | undefined;
-    try {
-      uri = await copyPhoto(vehicleId, id, asset.uri);
-      await insertPhoto(db, { id, vehicleId, localUri: uri, isCover: 0, createdAt: new Date().toISOString() }, makeCover);
-      saved++;
-    } catch (error) {
-      console.error('Vehicle photo save failed.');
-
-      if (uri) {
-        try {
-          const file = ownedPhotoFile(vehicleId, id, uri);
-          if (file.exists) file.delete();
-        } catch {
-          console.error('Vehicle photo cleanup failed.');
-        }
-      }
-
-      throw new Error(
-        error instanceof Error
-          ? `${saved} photos saved. ${error.message}`
-          : `${saved} photos saved. Could not save the next image.`
-      );
+  return withOperation(async (operation) => {
+    if (!await db.getFirstAsync('SELECT id FROM vehicles WHERE id = ?', [vehicleId])) {
+      throw new Error('This vehicle no longer exists.');
     }
-  }
+    // Save the selected cover first so a new vehicle gets the correct cover even
+    // if a later image fails. Existing galleries retain their current cover.
+    const ordered = coverId
+      ? [...photos.filter((photo) => photo.id === coverId), ...photos.filter((photo) => photo.id !== coverId)]
+      : photos;
+    let saved = 0;
+    for (const asset of ordered) {
+      const id = asset.id;
+      let uri: string | undefined;
+      try {
+        uri = await copyPhoto(vehicleId, id, asset.uri);
+        await insertPhoto(db, { id, vehicleId, localUri: uri, isCover: 0, createdAt: new Date().toISOString() }, makeCover, operation);
+        saved++;
+      } catch (error) {
+        console.error('Vehicle photo save failed.');
+
+        if (uri) {
+          try {
+            const file = ownedPhotoFile(vehicleId, id, uri);
+            if (file.exists) file.delete();
+          } catch {
+            console.error('Vehicle photo cleanup failed.');
+          }
+        }
+
+        throw new Error(
+          error instanceof Error
+            ? `${saved} photos saved. ${error.message}`
+            : `${saved} photos saved. Could not save the next image.`
+        );
+      }
+    }
+  }, context);
 }
 
-export async function chooseCover(db: SQLiteDatabase, vehicleId: number, photoId: string) {
-  const photo = (await getVehiclePhotos(db, vehicleId)).find((item) => item.id === photoId);
-  if (!photo || !availablePhotoUri(vehicleId, photo.id, photo.localUri)) throw new Error('This image is missing. Add it again or delete its entry.');
-  await setCoverPhoto(db, vehicleId, photoId);
+export async function chooseCover(db: SQLiteDatabase, vehicleId: number, photoId: string, context?: OperationContext) {
+  return withOperation(async (operation) => {
+    const photo = (await getVehiclePhotos(db, vehicleId)).find((item) => item.id === photoId);
+    if (!photo || !availablePhotoUri(vehicleId, photo.id, photo.localUri)) throw new Error('This image is missing. Add it again or delete its entry.');
+    await setCoverPhoto(db, vehicleId, photoId, operation);
+  }, context);
 }
 
-export async function removeVehiclePhoto(db: SQLiteDatabase, vehicleId: number, photoId: string) {
-  const photo = (await getVehiclePhotos(db, vehicleId)).find((item) => item.id === photoId);
-  if (!photo) return;
-  const file = ownedPhotoFile(vehicleId, photoId, photo.localUri);
-  // File first: on a filesystem error the row remains available for retry. If the
-  // database fails afterwards, the missing-file entry can be safely deleted again.
-  if (file.exists) file.delete();
-  await deletePhotoRecord(db, vehicleId, photoId);
+export async function removeVehiclePhoto(db: SQLiteDatabase, vehicleId: number, photoId: string, context?: OperationContext) {
+  return withOperation(async (operation) => {
+    const photo = (await getVehiclePhotos(db, vehicleId)).find((item) => item.id === photoId);
+    if (!photo) return;
+    const file = ownedPhotoFile(vehicleId, photoId, photo.localUri);
+    // File first: on a filesystem error the row remains available for retry. If the
+    // database fails afterwards, the missing-file entry can be safely deleted again.
+    if (file.exists) file.delete();
+    await deletePhotoRecord(db, vehicleId, photoId, operation);
+  }, context);
 }

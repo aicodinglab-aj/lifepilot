@@ -9,6 +9,7 @@ function load(relative, mocks = {}) {
   const exports = {};
   const code = ts.transpileModule(fs.readFileSync(path.join(__dirname, '..', relative), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX } }).outputText;
   vm.runInNewContext(code, { exports, Date, require: (name) => {
+    if (name === '@/features/activity/operation-lifecycle') return require('./helpers/load-typescript.cjs').activity;
     if (name in mocks) return mocks[name];
     return load(`${name.startsWith('@/') ? `src/${name.slice(2)}` : path.join(path.dirname(relative), name)}.ts`, mocks);
   } });

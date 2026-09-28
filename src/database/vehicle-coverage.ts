@@ -1,3 +1,4 @@
+import { withOperation, type OperationContext } from '@/features/activity/operation-lifecycle';
 import { openDatabaseAsync, type SQLiteDatabase } from 'expo-sqlite';
 import { parseCoverageKind, validateCoverageOwner, type CoverageCleanup, type CoverageDocument, type CoverageDraft, type CoverageKind, type CoverageRecord } from '@/features/vehicles/coverage-record';
 import { calendarDay } from '@/features/vehicles/coverage-status';
@@ -59,52 +60,60 @@ async function transaction(db: SQLiteDatabase, action: (tx: SQLiteDatabase) => P
   } finally { await tx.closeAsync(); }
 }
 export async function writeCoverage(db: SQLiteDatabase, kind: CoverageKind, vehicleId: number, id: string,
-  draft: CoverageDraft, revision: number | null, added: CoverageDocument[], removed: string[]) {
-  validateCoverageOwner(vehicleId, id, ...removed);
-  const table = tables(kind);
-  await transaction(db, async (tx) => {
-    const now = new Date().toISOString();
-    const values = kind === 'insurance'
-      ? [draft.provider, draft.number, draft.policyType, draft.startDate, draft.expiryDate, draft.amount, draft.notes]
-      : [draft.provider, draft.number, draft.startDate, draft.expiryDate, draft.amount, draft.notes];
-    if (revision == null) {
-      if (removed.length) throw new Error('A new record has no saved documents to remove.');
-      await tx.runAsync(`INSERT INTO ${table.records} (id, vehicle_id, ${table.fields.join(', ')}, created_at, updated_at)
-        VALUES (?, ?, ${table.fields.map(() => '?').join(', ')}, ?, ?)`, [id, vehicleId, ...values, now, now]);
-    } else {
-      const result = await tx.runAsync(`UPDATE ${table.records} SET ${table.fields.map((field) => `${field} = ?`).join(', ')},
-        updated_at = ?, revision = revision + 1 WHERE vehicle_id = ? AND id = ? AND revision = ?`, [...values, now, vehicleId, id, revision]);
-      if (result.changes !== 1) throw new Error('This record changed or was deleted. Reopen it before editing.');
-    }
-    for (const documentId of new Set(removed)) {
-      const result = await tx.runAsync(`DELETE FROM ${table.documents} WHERE vehicle_id = ? AND record_id = ? AND id = ?`, [vehicleId, id, documentId]);
-      if (result.changes !== 1) throw new Error('This document no longer belongs to the record. Reopen the editor.');
-    }
-    for (const doc of added) {
-      validateCoverageOwner(vehicleId, doc.id);
-      if (doc.vehicleId !== vehicleId || doc.recordId !== id) throw new Error('Invalid document owner.');
-      await tx.runAsync(`INSERT INTO ${table.documents} (id, vehicle_id, record_id, local_uri, created_at) VALUES (?, ?, ?, ?, ?)`,
-        [doc.id, vehicleId, id, doc.localUri, doc.createdAt]);
-      await clearCoverageCleanup(tx, { kind, vehicleId, recordId: id, documentId: doc.id });
-    }
-  });
+  draft: CoverageDraft, revision: number | null, added: CoverageDocument[], removed: string[], context?: OperationContext) {
+  return withOperation(async (operation) => {
+    validateCoverageOwner(vehicleId, id, ...removed);
+    const table = tables(kind);
+    await transaction(db, async (tx) => {
+      const now = new Date().toISOString();
+      const values = kind === 'insurance'
+        ? [draft.provider, draft.number, draft.policyType, draft.startDate, draft.expiryDate, draft.amount, draft.notes]
+        : [draft.provider, draft.number, draft.startDate, draft.expiryDate, draft.amount, draft.notes];
+      if (revision == null) {
+        if (removed.length) throw new Error('A new record has no saved documents to remove.');
+        await tx.runAsync(`INSERT INTO ${table.records} (id, vehicle_id, ${table.fields.join(', ')}, created_at, updated_at)
+          VALUES (?, ?, ${table.fields.map(() => '?').join(', ')}, ?, ?)`, [id, vehicleId, ...values, now, now]);
+      } else {
+        const result = await tx.runAsync(`UPDATE ${table.records} SET ${table.fields.map((field) => `${field} = ?`).join(', ')},
+          updated_at = ?, revision = revision + 1 WHERE vehicle_id = ? AND id = ? AND revision = ?`, [...values, now, vehicleId, id, revision]);
+        if (result.changes !== 1) throw new Error('This record changed or was deleted. Reopen it before editing.');
+      }
+      for (const documentId of new Set(removed)) {
+        const result = await tx.runAsync(`DELETE FROM ${table.documents} WHERE vehicle_id = ? AND record_id = ? AND id = ?`, [vehicleId, id, documentId]);
+        if (result.changes !== 1) throw new Error('This document no longer belongs to the record. Reopen the editor.');
+      }
+      for (const doc of added) {
+        validateCoverageOwner(vehicleId, doc.id);
+        if (doc.vehicleId !== vehicleId || doc.recordId !== id) throw new Error('Invalid document owner.');
+        await tx.runAsync(`INSERT INTO ${table.documents} (id, vehicle_id, record_id, local_uri, created_at) VALUES (?, ?, ?, ?, ?)`,
+          [doc.id, vehicleId, id, doc.localUri, doc.createdAt]);
+        await clearCoverageCleanup(tx, { kind, vehicleId, recordId: id, documentId: doc.id }, operation);
+      }
+    });
+  }, context);
 }
-export async function deleteCoverageRecord(db: SQLiteDatabase, kind: CoverageKind, vehicleId: number, recordId: string) {
-  validateCoverageOwner(vehicleId, recordId);
-  await transaction(db, async (tx) => {
-    await tx.runAsync(`DELETE FROM ${tables(kind).records} WHERE vehicle_id = ? AND id = ?`, [vehicleId, recordId]);
-  });
+export async function deleteCoverageRecord(db: SQLiteDatabase, kind: CoverageKind, vehicleId: number, recordId: string, context?: OperationContext) {
+  return withOperation(async () => {
+    validateCoverageOwner(vehicleId, recordId);
+    await transaction(db, async (tx) => {
+      await tx.runAsync(`DELETE FROM ${tables(kind).records} WHERE vehicle_id = ? AND id = ?`, [vehicleId, recordId]);
+    });
+  }, context);
 }
-export async function queueCoverageCleanup(db: SQLiteDatabase, job: CoverageCleanup) {
-  parseCoverageKind(job.kind); validateCoverageOwner(job.vehicleId, job.recordId, job.documentId);
-  await db.runAsync(`INSERT INTO coverage_document_cleanup (kind, vehicle_id, record_id, document_id, created_at) VALUES (?, ?, ?, ?, ?)`,
-    [job.kind, job.vehicleId, job.recordId, job.documentId, new Date().toISOString()]);
+export async function queueCoverageCleanup(db: SQLiteDatabase, job: CoverageCleanup, context?: OperationContext) {
+  return withOperation(async () => {
+    parseCoverageKind(job.kind); validateCoverageOwner(job.vehicleId, job.recordId, job.documentId);
+    await db.runAsync(`INSERT INTO coverage_document_cleanup (kind, vehicle_id, record_id, document_id, created_at) VALUES (?, ?, ?, ?, ?)`,
+      [job.kind, job.vehicleId, job.recordId, job.documentId, new Date().toISOString()]);
+  }, context);
 }
 export function getCoverageCleanup(db: SQLiteDatabase, vehicleId?: number) {
   return db.getAllAsync<CoverageCleanup>(`SELECT kind, vehicle_id AS vehicleId, record_id AS recordId, document_id AS documentId
     FROM coverage_document_cleanup ${vehicleId == null ? '' : 'WHERE vehicle_id = ?'}`, vehicleId == null ? [] : [vehicleId]);
 }
-export async function clearCoverageCleanup(db: SQLiteDatabase, job: CoverageCleanup) {
-  await db.runAsync('DELETE FROM coverage_document_cleanup WHERE kind = ? AND vehicle_id = ? AND record_id = ? AND document_id = ?',
-    [job.kind, job.vehicleId, job.recordId, job.documentId]);
+export async function clearCoverageCleanup(db: SQLiteDatabase, job: CoverageCleanup, context?: OperationContext) {
+  return withOperation(async () => {
+    await db.runAsync('DELETE FROM coverage_document_cleanup WHERE kind = ? AND vehicle_id = ? AND record_id = ? AND document_id = ?',
+      [job.kind, job.vehicleId, job.recordId, job.documentId]);
+  }, context);
 }

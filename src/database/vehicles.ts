@@ -1,3 +1,4 @@
+import { withOperation, type OperationContext } from '@/features/activity/operation-lifecycle';
 import type { SQLiteDatabase } from 'expo-sqlite';
 
 import type { NewVehicle, Vehicle, VehicleInformation } from '@/features/vehicles/vehicle';
@@ -35,44 +36,46 @@ export class DuplicateRegistrationError extends Error {
   }
 }
 
-export async function insertVehicle(db: SQLiteDatabase, vehicle: NewVehicle) {
-  const timestamp = new Date().toISOString();
+export async function insertVehicle(db: SQLiteDatabase, vehicle: NewVehicle, context?: OperationContext) {
+  return withOperation(async () => {
+    const timestamp = new Date().toISOString();
 
-  try {
-    const result = await db.runAsync(
-      `INSERT INTO vehicles (
-        vehicle_type,
-        registration_number,
-        make,
-        model,
-        variant,
-        model_year,
-        fuel_type,
-        odometer_km,
-        created_at,
-        updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        vehicle.vehicleType,
-        vehicle.registrationNumber,
-        vehicle.make,
-        vehicle.model,
-        vehicle.variant,
-        vehicle.modelYear,
-        vehicle.fuelType,
-        vehicle.odometerKm,
-        timestamp,
-        timestamp,
-      ],
-    );
-    return result.lastInsertRowId;
-  } catch (error) {
-    if (error instanceof Error && /unique constraint failed/i.test(error.message)) {
-      throw new DuplicateRegistrationError();
+    try {
+      const result = await db.runAsync(
+        `INSERT INTO vehicles (
+          vehicle_type,
+          registration_number,
+          make,
+          model,
+          variant,
+          model_year,
+          fuel_type,
+          odometer_km,
+          created_at,
+          updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          vehicle.vehicleType,
+          vehicle.registrationNumber,
+          vehicle.make,
+          vehicle.model,
+          vehicle.variant,
+          vehicle.modelYear,
+          vehicle.fuelType,
+          vehicle.odometerKm,
+          timestamp,
+          timestamp,
+        ],
+      );
+      return result.lastInsertRowId;
+    } catch (error) {
+      if (error instanceof Error && /unique constraint failed/i.test(error.message)) {
+        throw new DuplicateRegistrationError();
+      }
+
+      throw error;
     }
-
-    throw error;
-  }
+  }, context);
 }
 
 export async function getVehicles(db: SQLiteDatabase, vehicleId?: number): Promise<Vehicle[]> {
@@ -127,24 +130,26 @@ export async function getVehicles(db: SQLiteDatabase, vehicleId?: number): Promi
 }
 
 export async function updateVehicle(db: SQLiteDatabase, vehicleId: number,
-  vehicle: Omit<NewVehicle, 'vehicleType'> & VehicleInformation) {
-  if (!Number.isSafeInteger(vehicleId) || vehicleId <= 0) throw new Error('Invalid vehicle.');
-  try {
-    const result = await db.runAsync(`UPDATE vehicles SET
-      make = ?, model = ?, variant = ?, model_year = ?, registration_number = ?,
-      fuel_type = ?, odometer_km = ?, chassis_number = ?, engine_number = ?,
-      engine_capacity = ?, transmission = ?, color = ?, purchase_date = ?,
-      purchase_price = ?, dealer = ?, warranty_valid_until = ?, notes = ?, updated_at = ?
-      WHERE id = ?`, [vehicle.make, vehicle.model, vehicle.variant, vehicle.modelYear,
-      vehicle.registrationNumber, vehicle.fuelType, vehicle.odometerKm, vehicle.chassisNumber,
-      vehicle.engineNumber, vehicle.engineCapacity, vehicle.transmission, vehicle.color,
-      vehicle.purchaseDate, vehicle.purchasePrice, vehicle.dealer, vehicle.warrantyValidUntil,
-      vehicle.notes, new Date().toISOString(), vehicleId]);
-    if (result.changes !== 1) throw new Error('This vehicle no longer exists.');
-  } catch (error) {
-    if (error instanceof Error && /unique constraint failed/i.test(error.message)) {
-      throw new DuplicateRegistrationError();
+  vehicle: Omit<NewVehicle, 'vehicleType'> & VehicleInformation, context?: OperationContext) {
+  return withOperation(async () => {
+    if (!Number.isSafeInteger(vehicleId) || vehicleId <= 0) throw new Error('Invalid vehicle.');
+    try {
+      const result = await db.runAsync(`UPDATE vehicles SET
+        make = ?, model = ?, variant = ?, model_year = ?, registration_number = ?,
+        fuel_type = ?, odometer_km = ?, chassis_number = ?, engine_number = ?,
+        engine_capacity = ?, transmission = ?, color = ?, purchase_date = ?,
+        purchase_price = ?, dealer = ?, warranty_valid_until = ?, notes = ?, updated_at = ?
+        WHERE id = ?`, [vehicle.make, vehicle.model, vehicle.variant, vehicle.modelYear,
+        vehicle.registrationNumber, vehicle.fuelType, vehicle.odometerKm, vehicle.chassisNumber,
+        vehicle.engineNumber, vehicle.engineCapacity, vehicle.transmission, vehicle.color,
+        vehicle.purchaseDate, vehicle.purchasePrice, vehicle.dealer, vehicle.warrantyValidUntil,
+        vehicle.notes, new Date().toISOString(), vehicleId]);
+      if (result.changes !== 1) throw new Error('This vehicle no longer exists.');
+    } catch (error) {
+      if (error instanceof Error && /unique constraint failed/i.test(error.message)) {
+        throw new DuplicateRegistrationError();
+      }
+      throw error;
     }
-    throw error;
-  }
+  }, context);
 }

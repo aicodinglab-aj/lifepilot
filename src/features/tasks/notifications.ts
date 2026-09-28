@@ -1,3 +1,4 @@
+import { withOperation, type OperationContext } from '@/features/activity/operation-lifecycle';
 import { Platform } from 'react-native';
 import { loadNotificationRuntime } from '@/features/notifications/runtime';
 import { notificationAdapter } from '@/features/reminders/notifications';
@@ -32,13 +33,15 @@ export function requestTaskPermission(): Promise<void> {
   asking = requestPermission().finally(() => { asking = null; });
   return asking;
 }
-async function requestPermission() {
-  // Explicit user action only. Like vehicle reminders, never repeatedly prompt after denial.
-  if (await taskNotificationPermission() === 'undetermined') {
-    const Notifications = await loadNotificationRuntime();
-    if (!Notifications) return;
-    await Notifications.requestPermissionsAsync({ ios: { allowAlert: true, allowSound: true, allowBadge: false } });
-  }
+async function requestPermission(context?: OperationContext) {
+  return withOperation(async () => {
+    // Explicit user action only. Like vehicle reminders, never repeatedly prompt after denial.
+    if (await taskNotificationPermission() === 'undetermined') {
+      const Notifications = await loadNotificationRuntime();
+      if (!Notifications) return;
+      await Notifications.requestPermissionsAsync({ ios: { allowAlert: true, allowSound: true, allowBadge: false } });
+    }
+  }, context);
 }
 export const taskNotificationAdapter: TaskNotificationAdapter = {
   capacity: notificationAdapter.capacity,

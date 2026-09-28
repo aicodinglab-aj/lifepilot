@@ -11,6 +11,7 @@ function load(relative, mocks = {}) {
   const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText;
   const exports = {};
   vm.runInNewContext(code, { exports, require: (name) => {
+    if (name === '@/features/activity/operation-lifecycle') return require('./helpers/load-typescript.cjs').activity;
     if (name in mocks) return mocks[name];
     if (name === 'expo-sqlite') return {};
     const target = name.startsWith('@/') ? `src/${name.slice(2)}` : path.join(path.dirname(relative), name);
