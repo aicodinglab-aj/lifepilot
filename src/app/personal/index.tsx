@@ -71,6 +71,8 @@ export default function PersonalDashboard() {
       <Button label="Add Transaction" icon={<Text accessible={false} style={{ color: colors.onPrimary, fontSize: 20 }}>+</Text>}
         onPress={() => router.push('/personal/edit')} />
 
+      <Button label="Budget" variant="secondary" onPress={() => router.push({ pathname: '/personal/budget', params: { month } })} />
+
       <AnalyticsSections data={state.data.analytics} />
 
       <Section title="Recent Transactions" subtitle={monthLabel(month)}>

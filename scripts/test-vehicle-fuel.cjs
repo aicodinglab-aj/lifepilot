@@ -35,9 +35,9 @@ async function main() {
     const backupService = load('src/features/backup/backup-service.ts'), restore = load('src/features/backup/restore-service.ts');
     const v9package = await backupService.createBackup(db, { destination: new f.File(f.document, 'v9.lpbackup') });
     await migration.migrateDatabase(db); await migration.migrateDatabase(db);
-    assert.equal(raw.prepare('PRAGMA user_version').get().user_version, 10); assert.equal(snapshot(), before);
+    assert.equal(raw.prepare('PRAGMA user_version').get().user_version, 11); assert.equal(snapshot(), before);
     const fresh = f.database(); await migration.migrateDatabase(fresh);
-    assert.equal(fresh.raw.prepare('PRAGMA user_version').get().user_version, 10);
+    assert.equal(fresh.raw.prepare('PRAGMA user_version').get().user_version, 11);
     assert.equal(fresh.raw.prepare('SELECT COUNT(*) AS n FROM vehicle_fuel_entries').get().n, 0);
     const broken = f.database(); for (const step of steps.slice(0,9)) broken.raw.exec(step[1]);
     const exec = broken.execAsync;
@@ -156,8 +156,8 @@ async function main() {
     const owner=await maintenance;owner.resume(); f.interceptRun(async()=>{});f.interceptClose(async()=>{});
     console.log('PASS: shared parent lease, synchronous mutation blocking, complete transaction/odometer/private-close drain');
 
-    const current=await backupService.createBackup(db,{destination:new f.File(f.document,'v10.lpbackup')});
-    assert.equal(current.manifest.database.schemaVersion,10);
+    const current=await backupService.createBackup(db,{destination:new f.File(f.document,'current.lpbackup')});
+    assert.equal(current.manifest.database.schemaVersion,11);
     const currentPackage=JSON.parse(await current.file.text());
     assert.equal(Object.keys(currentPackage.payloads).length,1,'whole database only; no table-specific format additions');
     assert.equal((await restore.inspectRestore(current.file)).compatibility,'current');
@@ -168,11 +168,11 @@ async function main() {
     await restore.restoreBackup(target,current.file,exclusiveOwner.authorization);exclusiveOwner.resume();
     assert.equal(target.raw.prepare('SELECT COUNT(*) AS n FROM vehicle_fuel_entries').get().n,count);
     exclusiveOwner=await activity.suspend();await restore.restoreBackup(target,v9package.file,exclusiveOwner.authorization);exclusiveOwner.resume();
-    assert.equal(target.raw.prepare('PRAGMA user_version').get().user_version,10);
+    assert.equal(target.raw.prepare('PRAGMA user_version').get().user_version,11);
     assert.equal(target.raw.prepare('SELECT COUNT(*) AS n FROM vehicle_fuel_entries').get().n,0);
     assert.equal(target.raw.prepare('SELECT amount FROM personal_transactions').get().amount,12345);
     assert.equal(raw.prepare('SELECT COUNT(*) AS n FROM vehicle_fuel_entries').get().n,count,'source remains unchanged');
-    console.log('PASS: real SQLite snapshot includes fuel table; actual v9 migration and v10 restore preserve records (Expo bridge mocked)');
+    console.log('PASS: real SQLite snapshot includes fuel table; actual v9 migration and current restore preserve records (Expo bridge mocked)');
   } finally { await f.dispose(); }
   finished=true;
 }

@@ -1,6 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-export const DATABASE_VERSION = 10;
+export const DATABASE_VERSION = 11;
 
 export async function migrateDatabase(db: SQLiteDatabase) {
   await db.execAsync('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;');
@@ -462,4 +462,29 @@ export async function migrateDatabase(db: SQLiteDatabase) {
       `);
     });
   }
+  if (currentVersion < 11) {
+    await db.withTransactionAsync(async () => {
+      await db.execAsync(`
+        CREATE TABLE personal_monthly_budgets (
+          month TEXT PRIMARY KEY NOT NULL CHECK (month GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]' AND substr(month, 1, 4) BETWEEN '0001' AND '9999' AND substr(month, 6, 2) BETWEEN '01' AND '12'),
+          amount INTEGER NOT NULL CHECK (typeof(amount) = 'integer' AND amount BETWEEN 1 AND 99999999999),
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        );
+        CREATE TABLE personal_category_budgets (
+          month TEXT NOT NULL CHECK (month GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]' AND substr(month, 1, 4) BETWEEN '0001' AND '9999' AND substr(month, 6, 2) BETWEEN '01' AND '12'),
+          category_id TEXT NOT NULL,
+          category_type TEXT NOT NULL DEFAULT 'expense' CHECK (category_type = 'expense'),
+          amount INTEGER NOT NULL CHECK (typeof(amount) = 'integer' AND amount BETWEEN 1 AND 99999999999),
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          PRIMARY KEY (month, category_id),
+          FOREIGN KEY (category_id, category_type) REFERENCES personal_categories(id, type) ON DELETE RESTRICT
+        );
+        CREATE INDEX personal_category_budgets_category ON personal_category_budgets(category_id, category_type);
+        PRAGMA user_version = 11;
+      `);
+    });
+  }
+
 }

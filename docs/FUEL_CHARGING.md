@@ -37,7 +37,7 @@ History is vehicle-scoped and indexed. Summary scanning uses bounded pages and s
 
 ## Backup and verification
 
-The existing complete SQLite snapshot automatically includes this table. Current v10 backups restore directly; v9 backups migrate in isolation to v10 with an empty fuel table. `.lpbackup` and restore architecture are unchanged.
+The existing complete SQLite snapshot automatically includes this table. Fuel schema v10 backups retain fuel records when upgraded to current schema v11; v9 backups also add the empty fuel table. Budget tables are added by v11 without changing fuel data. `.lpbackup` and restore architecture are unchanged.
 
 `node scripts/test-vehicle-fuel.cjs` exercises real Node SQLite databases with Expo bridge adapters: fresh/upgrade/rollback/preservation, CRUD and ownership, validation, exact large sums, paging, monthly totals, cascade deletion, odometer atomicity, valid/invalid efficiency, lifecycle suspension/drain and actual v9/v10 SQLite backup bytes through the existing backup engine. These tests do not establish native Expo/device behavior.
 
