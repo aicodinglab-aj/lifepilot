@@ -12,7 +12,7 @@ V1 is not encrypted and holds encoded content in memory while packaging and rest
 
 ## Restore safety contract
 
-`inspectRestore` verifies the entire package, independently deserializes the SQLite image, runs `PRAGMA integrity_check`, compares the actual schema to the manifest, and reports compatibility without changing active data. Schema v9 is current. Older supported databases are upgraded in isolation through the normal migration function; newer databases are rejected before replacement.
+`inspectRestore` verifies the entire package, independently deserializes the SQLite image, runs `PRAGMA integrity_check`, compares the actual schema to the manifest, and reports compatibility without changing active data. Schema v10 is current. Fuel/charging entries are included automatically in the complete SQLite snapshot; v9 restores add the empty fuel table through the additive v10 migration. The package format is unchanged. Older supported databases are upgraded in isolation through the normal migration function; newer databases are rejected before replacement.
 
 `restoreBackup` requires a live `MaintenanceAuthorization` issued by `applicationActivity` after all admitted operations drain. The authorization includes `dataAccessSuspended: true`, but a caller-created boolean object is rejected. Incoming files and persistent rollback material are staged in a unique app-private recovery directory before replacement. It uses Expo SQLite's online backup API to write through the existing connection rather than replacing an open database file. Persistent files are replacement-restored only below `vehicle-photos`. If replacement or verification fails, the saved database and files are restored. The source `.lpbackup` is read-only.
 

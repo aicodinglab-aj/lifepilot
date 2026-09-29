@@ -51,12 +51,12 @@ async function main() {
   const snapshot = () => JSON.stringify(tables.map((name) => [name, raw.prepare(`SELECT * FROM ${name}`).all()]));
   const before = snapshot();
   await migration.migrateDatabase(db); await migration.migrateDatabase(db);
-  assert.equal(raw.prepare('PRAGMA user_version').get().user_version, 9);
+  assert.equal(raw.prepare('PRAGMA user_version').get().user_version, 10);
   assert.equal(snapshot(), before);
   assert.equal((await repo.getTaskCategories(db)).length, 5);
   const fresh = database(); await migration.migrateDatabase(fresh.db);
   assert.equal((await repo.getTaskCategories(fresh.db)).length, 5);
-  fresh.raw.exec('PRAGMA user_version = 10'); await assert.rejects(() => migration.migrateDatabase(fresh.db)); fresh.raw.close();
+  fresh.raw.exec('PRAGMA user_version = 11'); await assert.rejects(() => migration.migrateDatabase(fresh.db)); fresh.raw.close();
   const broken = database(); broken.raw.exec('PRAGMA user_version = 8; CREATE TABLE tasks (id INTEGER)');
   await assert.rejects(() => migration.migrateDatabase(broken.db));
   assert.equal(broken.raw.prepare('PRAGMA user_version').get().user_version, 8);

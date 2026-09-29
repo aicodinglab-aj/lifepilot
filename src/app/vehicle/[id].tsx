@@ -12,6 +12,7 @@ import { useAppearance } from '@/features/appearance/appearance-provider';
 import { coverageQuickStatus, serviceQuickStatus } from '@/features/vehicles/overview-summary';
 import { useOverviewSummary } from '@/features/vehicles/use-overview-summary';
 import { useVehicle } from '@/features/vehicles/use-vehicle';
+import { fuelTitle } from '@/features/vehicles/fuel-presentation';
 import { vehicleModules } from '@/features/vehicles/vehicle-modules';
 
 type SymbolName = SymbolViewProps['name'];
@@ -85,13 +86,13 @@ export default function VehicleOverviewScreen() {
           <NavigationCard title="Vehicle Details" subtitle="Model, chassis, engine and purchase information"
             icon={{ ios: 'list.bullet.rectangle', android: 'description', web: 'description' }}
             href={{ pathname: '/vehicle/details', params }} />
-          {Object.entries(vehicleModules).map(([module, item]) => <NavigationCard key={module} {...item}
+          {Object.entries(vehicleModules).map(([module, item]) => <NavigationCard key={module} {...item} title={module === 'fuel' ? fuelTitle(vehicle.fuelType) : item.title}
             icon={module === 'service' ? { ios: 'wrench.and.screwdriver', android: 'build', web: 'build' }
               : module === 'insurance' ? { ios: 'shield', android: 'shield', web: 'shield' }
                 : { ios: 'fuelpump', android: 'local_gas_station', web: 'local_gas_station' }}
             href={module === 'service' ? { pathname: '/vehicle/services', params }
               : module === 'insurance' ? { pathname: '/vehicle/insurance-puc', params }
-                : { pathname: '/vehicle/module', params: { ...params, module } }} />)}
+                : { pathname: '/vehicle/fuel', params }} />)}
           <NavigationCard title="Documents & Photos" subtitle="Bills, certificates and vehicle photos"
             icon={{ ios: 'photo.on.rectangle', android: 'photo_library', web: 'photo_library' }}
             href={{ pathname: '/vehicle/photos', params }} />

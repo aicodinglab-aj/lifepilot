@@ -1,6 +1,6 @@
 # LifePilot – Master Project Context
 
-Last repository review: 2026-09-28. Source code is authoritative if this document becomes stale. This is a snapshot of the checked-out repository, not proof of behavior on an installed phone.
+Last repository review: 2026-09-29. Source code is authoritative if this document becomes stale. This is a snapshot of the checked-out repository, not proof of behavior on an installed phone.
 
 ## 1. Project Overview
 
@@ -52,7 +52,7 @@ android/          Generated local native project, ignored by Git
 
 ## 5. Navigation
 
-`/` redirects to `/(tabs)`, whose `index.tsx` is the Home screen. The `(tabs)` layout uses `Slot`, not a visible starter tab bar. Home links to `/tasks`, `/reminders`, `/vehicle-manager`, `/personal`, and `/settings`. Vehicle routes live under `/vehicle/*` (details, edit, photos, management, service, insurance/PUC and coverage history); personal routes under `/personal/*`; task routes under `/tasks/*`. Secondary screens use Expo Router stack navigation and the shared icon-only `ScreenHeader`, with a minimum 44 x 44 Back target, consistent arrow sizing/alignment, an accessibility label of `Back`, and route-specific fallbacks. `src/app/vehicle/module.tsx` remains a placeholder route for some module keys; inspect actual route targets before describing a module as complete.
+`/` redirects to `/(tabs)`, whose `index.tsx` is the Home screen. The `(tabs)` layout uses `Slot`, not a visible starter tab bar. Home links to `/tasks`, `/reminders`, `/vehicle-manager`, `/personal`, and `/settings`. Vehicle routes live under `/vehicle/*` (details, edit, photos, management, service, insurance/PUC and coverage history); personal routes under `/personal/*`; task routes under `/tasks/*`. Secondary screens use Expo Router stack navigation and the shared icon-only `ScreenHeader`, with a minimum 44 x 44 Back target, consistent arrow sizing/alignment, an accessibility label of `Back`, and route-specific fallbacks. `src/app/vehicle/module.tsx` redirects supported service, insurance and fuel module links to their dedicated routes; unknown keys show an unavailable state.
 
 ## 6. UI / Theme / Branding
 
@@ -66,7 +66,7 @@ The V2 screen migrations include Home, Tasks and task forms/details, Garage and 
 
 Garage lists vehicles in compact V2 cards and opens the per-vehicle dashboard. Cover photos use a 16:9 presentation when present; a compact vehicle icon replaces the former large empty photo area when no cover exists. Add/edit supports registration, make/model, year, fuel type, odometer, and additional identity/purchase/warranty fields. Vehicle photos are copied to owned storage, can be selected during creation, and have one database-enforced cover photo per vehicle. Manage Vehicle has confirmed deletion and durable file cleanup. Vehicle Detail keeps identity and real Service, Insurance and PUC quick statuses prominent. Service & Maintenance has dated history, odometer, cost parts, next-service fields, and bill images. Insurance and PUC have dated records, history, document photos, status, and deletion/edit flows. Vehicle reminders derive from insurance, PUC and service records, with compact Upcoming, Overdue/Expired and Service mileage sections plus local notification settings. Important implementation files are `src/database/vehicles.ts`, `vehicle-photos.ts`, `vehicle-services.ts`, `vehicle-coverage.ts`, `reminders.ts`, their `src/features/vehicles/*` workflows, and `src/storage/*`.
 
-Fuel/charging logs and reports are **not implemented**; the exposed Fuel / Charging destination intentionally shows the existing coming-later state. Vehicle photo management works. General-purpose vehicle document uploads remain planned even though insurance/PUC document photos and service bill images are implemented. Older placeholder metadata for service and insurance does not override their implemented dedicated routes and repositories. Device behavior for current photo/document and notification flows still needs final verification.
+Fuel / Charging V1 Stage 1 data/domain foundation is implemented in `vehicle-fuel.ts`, `fuel-entry.ts` and `fuel-calculations.ts`: scoped CRUD/history/summaries, validation, lifecycle leases and conservative full-to-full calculations. Stage 2 UI is implemented: Vehicle Detail opens `/vehicle/fuel` with adaptive Fuel/Charging labels, dashboard summaries, recent entries, virtualized cursor history, details and validated add/edit/confirmed delete. The shared V2 controls preserve appearance support. Total paid remains authoritative; exact derived prices are previews, and efficiency displays only for valid dated intervals. Reports remain planned. Vehicle photo management works. General-purpose vehicle document uploads remain planned even though insurance/PUC document photos and service bill images are implemented. Older placeholder metadata for service and insurance does not override their implemented dedicated routes and repositories. Device behavior for current photo/document and notification flows still needs final verification.
 
 ## 8. Personal Expense Manager
 
@@ -78,7 +78,7 @@ Fuel/charging logs and reports are **not implemented**; the exposed Fuel / Charg
 
 ## 10. Database Architecture
 
-`src/database/migrate.ts` is the authoritative schema history. It enables WAL and foreign keys, reads `PRAGMA user_version`, rejects a database newer than supported, and applies each missing version in a transaction. Current version: **9**. There is no separate migration folder. Tasks and `task_categories` are the latest schema addition at version 9. The UI/UX V2 work added no migration and made no database schema change.
+`src/database/migrate.ts` is the authoritative schema history. It enables WAL and foreign keys, reads `PRAGMA user_version`, rejects a database newer than supported, and applies each missing version in a transaction. Current version: **10**. There is no separate migration folder. Version 10 adds `vehicle_fuel_entries` and its vehicle/date/id history index without changing existing tables or rows. The UI/UX V2 work added no migration and made no database schema change.
 
 | Version | Feature | Main changes |
 | --- | --- | --- |
@@ -91,8 +91,11 @@ Fuel/charging logs and reports are **not implemented**; the exposed Fuel / Charg
 | 7 | Vehicle reminders | Preferences, intervals, change revision, sources, schedule, notification cleanup, indexes and change/cancellation triggers. |
 | 8 | Personal finance | Typed categories, integer-paise transactions, default categories, date/type/category indexes. |
 | 9 | Tasks | Categories and tasks, default categories, due/completion/category/priority indexes. |
+| 10 | Fuel / Charging foundation | Discriminated refuel/charge records, integer paise/metres/milli-units, vehicle cascade FK and history index. |
 
 Core tables: `vehicles` (integer ID, registration, make/model, odometer and optional details); `vehicle_photos` (text ID, vehicle ID, URI, cover); `vehicle_services` (text ID, vehicle ID, date, odometer, costs, next due); `service_bill_photos` (vehicle and service owner, URI); `vehicle_insurance`/`vehicle_puc` (vehicle ID, expiry, amount and revision); `insurance_documents`/`puc_documents` (composite owner and URI); reminder preference/interval/source/schedule/cleanup tables; `personal_categories`/`personal_transactions`; `task_categories`/`tasks`. Cleanup tables retain jobs after parent deletion and intentionally lack parent FKs. Vehicle children otherwise cascade on vehicle deletion; personal transaction categories restrict deletion; task category deletion sets task category to null. Composite `(vehicle_id, record_id)` foreign keys prevent cross-vehicle document ownership. Reminder source and schedule foreign keys cascade, with triggers recording native notification cleanup. The full DDL and exact constraints/index columns are in `migrate.ts`.
+
+Fuel entry costs and optional quoted rates use integer paise; quantities use thousandths of L/kg/kWh and odometers use integer metres. Fuel saves raise a greater vehicle odometer in the same transaction/lease; lower readings and deletion never rewind it. Summary totals are decimal strings and calculated ratios remain exact until display. See `docs/FUEL_CHARGING.md` for APIs and full-to-full validity rules.
 
 Personal transaction `amount` is integer paise. Older vehicle price/service/coverage amount columns are SQLite `REAL`; do not assume their precision matches personal finance. Calendar dates use ISO-like text, usually `YYYY-MM-DD`; creation/update timestamps are text; reminder `fire_at` is an integer epoch time. Future migrations must preserve existing rows and test both fresh and upgrade paths. Version 3 is a data-copy table rebuild, not a data-discarding reset.
 
@@ -110,9 +113,9 @@ Development, preview and production native builds have no Expo Go config, so the
 
 ## 12A. Backup & Restore V1
 
-Settings exposes a V2 Backup & Restore screen. V1 creates a single `.lpbackup` JSON/Base64 package containing a consistent `serializeAsync()` snapshot of `lifepilot.db`, all persistent files below the validated `vehicle-photos` root, a versioned manifest and SHA-256 plus byte size for every entry. This covers vehicle records/photos, service history/bills, insurance/PUC records and images, Personal Expenses, Tasks, categories and SQLite reminder preferences. Cache, staging, generated backups, credentials, build files, native notification inventory/permissions/channels and the separate device-local appearance preference database are excluded.
+Settings exposes a V2 Backup & Restore screen. V1 creates a single `.lpbackup` JSON/Base64 package containing a consistent `serializeAsync()` snapshot of `lifepilot.db`, all persistent files below the validated `vehicle-photos` root, a versioned manifest and SHA-256 plus byte size for every entry. This covers fuel/charging records and vehicle records/photos, service history/bills, insurance/PUC records and images, Personal Expenses, Tasks, categories and SQLite reminder preferences. Cache, staging, generated backups, credentials, build files, native notification inventory/permissions/channels and the separate device-local appearance preference database are excluded.
 
-Restore inspection verifies structure, paths, counts, Base64 sizes, checksums, SQLite integrity and actual schema without changing active data. Schema v9 restores directly; older supported schemas use the existing migration function in isolation; newer schemas are rejected. Before replacement, the engine snapshots the current database and owned file tree. It writes through Expo SQLite's online backup API and replacement-restores only the owned file root, with database/file rollback on failure. The root coordinator synchronously closes mutation admission, unmounts navigation/providers and awaits the central activity drain before authorizing replacement. Recoverable failures release ownership; successful restore keeps the restart-required lock. Catastrophic rollback failure retains exclusive ownership and a recovery screen that blocks Android Back and instructs the user to stop using LifePilot and close it without claiming that reopening repairs data.
+Restore inspection verifies structure, paths, counts, Base64 sizes, checksums, SQLite integrity and actual schema without changing active data. Schema v10 restores directly; v9 upgrades add the empty fuel table; older supported schemas use the existing migration function in isolation; newer schemas are rejected. Before replacement, the engine snapshots the current database and owned file tree. It writes through Expo SQLite's online backup API and replacement-restores only the owned file root, with database/file rollback on failure. The root coordinator synchronously closes mutation admission, unmounts navigation/providers and awaits the central activity drain before authorizing replacement. Recoverable failures release ownership; successful restore keeps the restart-required lock. Catastrophic rollback failure retains exclusive ownership and a recovery screen that blocks Android Back and instructs the user to stop using LifePilot and close it without claiming that reopening repairs data.
 
 Absolute attachment URIs in SQLite are safe across installations because storage helpers validate only the exact owner/path suffix and reconstruct files below the current `Paths.document` root. Restore resets the source device's notification permission-request flag and clears vehicle schedule/cleanup metadata while retaining user preferences and reminder sources. After restart, normal reconciliation uses the destination device's OS inventory to recreate eligible vehicle/task notifications; restore itself never requests permission. The JSON/Base64 implementation can use significant memory and still requires real Android testing for large packages, system pickers, online database replacement, rollback and restart behavior.
 
@@ -154,13 +157,14 @@ Before installing a locally built APK over a data-bearing installation, verify: 
 | Needs device verification | Personal save | `PERSONAL_EXPENSES.md` records a past Android post-save exit investigation; automated save/navigation tests pass, but latest device outcome is not established by source. | Recheck on current preview APK and collect logs if reproduced. |
 | Needs device verification | Native workflows | Coverage/media, task and vehicle notifications, migration on existing installation, hardware Back, installed-APK update, and the Expo Go startup path have incomplete real-device verification in feature notes. | Confirm Expo Go starts without notification module evaluation, then execute native-build notification and other targeted checklists. |
 | Needs device verification | Backup & Restore V1 | Create/inspect/restore, operation drain, persistent rollback, catastrophic lock and cross-device paths are implemented with automated/mock coverage; retained recovery sets have no automatic recovery UI. | Test picker/export, large packages, concurrent operations, low storage, online replacement, rollback failure, retained artifacts and interruption/restart on Android with preserved installed data. |
-| Open documentation debt | README and vehicle module metadata | README is starter text; Fuel / Charging remains a coming-later route while service and insurance use dedicated implemented routes. | Update product-facing descriptions and README in a separate scoped change. |
+| Needs device verification | Fuel / Charging | Schema v10 foundation and Stage 2 UI are implemented with SQLite/component/lifecycle/backup tests; no native visual or Android testing performed. | Verify add/edit/history/details, units, keyboard/Back, themes/accessibility, migration, odometer and restore behavior on preserved installed data. |
+| Open documentation debt | README and vehicle module metadata | README is starter text; some historical module metadata for service and insurance remains stale, though their dedicated routes are implemented. | Update product-facing descriptions and README in a separate scoped change. |
 
 ## 19. Future Roadmap
 
 Backup & Restore V1 is implemented in source and awaits Android device validation. Future backup work may add streaming/archive packaging or encryption after V1 behavior is proven; cloud account and synchronization remain separate future work.
 
-Other planned or future candidates are fuel/charging logs and reports; general vehicle document uploads; personal budgets, recurring entries, receipts and custom category editing; and task recurring items, subtasks, custom categories and attachments. These are **not implemented**. Cloud account and synchronization remain future work after local backup/restore; no cloud data layer or account system exists today. Any future scope should be confirmed before creating schema or UI.
+Fuel / Charging Stages 1 and 2 are implemented; reports remain planned. Other planned or future candidates are general vehicle document uploads; personal budgets, recurring entries, receipts and custom category editing; and task recurring items, subtasks, custom categories and attachments. These are **not implemented**. Cloud account and synchronization remain future work after local backup/restore; no cloud data layer or account system exists today. Any future scope should be confirmed before creating schema or UI.
 
 ## 20. Important Files
 
@@ -170,12 +174,13 @@ Other planned or future candidates are fuel/charging logs and reports; general v
 | `package.json`, `app.json`, `eas.json` | Dependencies, Expo identity/plugins, build profiles. |
 | `src/app/_layout.tsx`, `src/app/(tabs)/index.tsx` | App bootstrap and Home. |
 | `src/database/migrate.ts` | Versioned schema and migration history. |
-| `src/database/{vehicles,vehicle-photos,vehicle-services,vehicle-coverage,reminders}.ts` | Vehicle repositories. |
+| `src/database/{vehicles,vehicle-photos,vehicle-services,vehicle-coverage,vehicle-fuel,reminders}.ts` | Vehicle repositories. |
 | `src/database/{personal,personal-analytics,tasks}.ts` | Personal and task repositories. |
 | `src/features/reminders/*`, `src/features/tasks/*` | Notification and task workflows. |
 | `src/features/appearance/*`, `src/constants/lifepilot-theme.ts` | Theme resolution and palette. |
 | `src/constants/design-system.ts`, `src/components/ui/*` | UI/UX V2 semantic tokens and reusable interface primitives. |
 | `src/storage/*` | Owned file import, path checks, deletion. |
+| `docs/FUEL_CHARGING.md` | Fuel APIs, units, calculation assumptions, Stage 2 UI and manual checks. |
 | `scripts/test-*.cjs` | Regression suites. |
 | `scripts/generate-project-guide.py`, `docs/LifePilot_Project_Guide.docx` | Development-only Markdown-to-Word generator and its reading copy. |
 | `scripts/android-preview-signing.gradle`, `LOCAL_ANDROID_PREVIEW.md` | Local preview signing setup and verified build status. |
@@ -201,10 +206,10 @@ Read this document first, then inspect the current repository; code overrides ou
 
 ## 23. Current Project State
 
-- **Completed in source:** UI/UX V2 across Home, Tasks, Garage/Vehicle Detail, Personal Expenses, Vehicle Reminders/Settings, Settings/About and remaining vehicle forms; vehicle CRUD/photos/services/coverage; personal transactions and analytics; tasks; appearance themes; local reminder scheduling; Expo Go notification isolation; Backup & Restore V1 create/inspect/replacement/rollback UI and engines, shared mutation leases/exclusive maintenance and persistent catastrophic recovery material; migrations through v9; and regression scripts.
+- **Completed in source:** UI/UX V2 across Home, Tasks, Garage/Vehicle Detail, Personal Expenses, Vehicle Reminders/Settings, Settings/About and remaining vehicle forms; vehicle CRUD/photos/services/coverage; personal transactions and analytics; tasks; appearance themes; local reminder scheduling; Expo Go notification isolation; Backup & Restore V1 create/inspect/replacement/rollback UI and engines, shared mutation leases/exclusive maintenance and persistent catastrophic recovery material; Fuel / Charging Stage 1 foundation and Stage 2 dashboard/forms/history/details; migrations through v10; and regression scripts.
 - **In progress / unverified:** final full-device V2 regression, native notification/media testing, installed-data upgrade safety and current-device verification of the historical personal-save concern.
 - **Paused:** local preview APK troubleshooting after the documented NDK download failure. No successful APK build is recorded. EAS preview is the intended supported build route when available.
-- **Next:** complete real-device Backup & Restore safety tests (including in-flight operations, rollback failure and process interruption) and final V2 regression testing. Fuel/charging, general document uploads and cloud account/sync remain future work.
+- **Next:** complete real-device Backup & Restore safety tests (including in-flight operations, rollback failure and process interruption) and final V2 regression testing. Fuel/charging device validation and future reports, general document uploads and cloud account/sync remain future work.
 
 ## 24. Changelog
 
@@ -217,6 +222,8 @@ Read this document first, then inspect the current repository; code overrides ou
 | 2026-09-21 | Completed the staged UI/UX V2 migration and polish pass. | Home, Tasks, Vehicles, Personal Expenses, Reminders, Settings/About and vehicle forms use the shared semantic system and icon-only headers; accessibility and touch targets were standardized without a migration. |
 | 2026-09-21 | Recorded Backup & Restore as the next planned capability. | Future transfer must include SQLite data and LifePilot-owned photos/documents; cloud account/sync remains later work. |
 | 2026-09-21 | Implemented and audited Backup & Restore V1. | Adds checksummed portable packages, safe inspection, isolated migration, coordinated replacement/rollback, cross-device path rebasing and restart locking without a schema or dependency change. |
+| 2026-09-29 | Implemented Fuel / Charging V1 Stage 2 UI. | Adaptive vehicle destination, dashboard, keyset history, details and validated add/edit/confirmed delete using V2 components and existing leased repositories. Exact price preview, guarded actions and component tests; schema stays v10, native testing outstanding. |
+| 2026-09-29 | Implemented Fuel / Charging V1 Stage 1 foundation. | Additive schema v10, vehicle-scoped leased CRUD, exact money/units, keyset history, summaries and conservative full-to-full efficiency. Real SQLite tests cover preservation and v9/v10 backup restore; UI remains planned. |
 | 2026-09-28 | Added cross-domain operation lifecycle and exclusive restore maintenance. | Whole-operation leases drain admitted mutations/cleanup, invalidate queued task passes, and authorize restore only under exclusive ownership. Persistent rollback sets survive catastrophic failure; the process stays locked. Added race/recovery tests and corrected restore documentation; schema v9 and backup format are unchanged. |
 
 Documentation maintenance rule: update affected sections of this file in the **same work** as any significant implementation or architectural change. Do not rewrite it wholesale; verify paths, versions, implemented status and known issues against source each time. Never add credentials, tokens, signing passwords, private keys or environment secrets.

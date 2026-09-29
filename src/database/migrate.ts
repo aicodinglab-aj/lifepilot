@@ -1,6 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-export const DATABASE_VERSION = 9;
+export const DATABASE_VERSION = 10;
 
 export async function migrateDatabase(db: SQLiteDatabase) {
   await db.execAsync('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;');
@@ -429,6 +429,36 @@ export async function migrateDatabase(db: SQLiteDatabase) {
         CREATE INDEX tasks_priority ON tasks(priority, completed);
         CREATE INDEX tasks_completed_history ON tasks(completed, completed_at DESC, id DESC);
         PRAGMA user_version = 9;
+      `);
+    });
+  }
+  if (currentVersion < 10) {
+    await db.withTransactionAsync(async () => {
+      await db.execAsync(`
+        CREATE TABLE vehicle_fuel_entries (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          vehicle_id INTEGER NOT NULL REFERENCES vehicles(id) ON DELETE CASCADE,
+          kind TEXT NOT NULL CHECK (kind IN ('refuel', 'charge')),
+          entry_date TEXT NOT NULL CHECK (length(entry_date) = 10 AND entry_date GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'),
+          odometer_metres INTEGER NOT NULL CHECK (typeof(odometer_metres) = 'integer' AND odometer_metres BETWEEN 0 AND 999999999999),
+          cost_paise INTEGER NOT NULL CHECK (typeof(cost_paise) = 'integer' AND cost_paise BETWEEN 0 AND 99999999999),
+          quantity_milli INTEGER NOT NULL CHECK (typeof(quantity_milli) = 'integer' AND quantity_milli BETWEEN 1 AND 999999999),
+          unit_price_paise INTEGER CHECK (unit_price_paise IS NULL OR (typeof(unit_price_paise) = 'integer' AND unit_price_paise BETWEEN 0 AND 99999999999)),
+          fuel_type TEXT CHECK (fuel_type IS NULL OR fuel_type IN ('Petrol', 'Diesel', 'CNG')),
+          full_tank INTEGER CHECK (full_tank IS NULL OR full_tank IN (0, 1)),
+          charge_before INTEGER CHECK (charge_before IS NULL OR (typeof(charge_before) = 'integer' AND charge_before BETWEEN 0 AND 100)),
+          charge_after INTEGER CHECK (charge_after IS NULL OR (typeof(charge_after) = 'integer' AND charge_after BETWEEN 0 AND 100)),
+          charging_location TEXT CHECK (charging_location IS NULL OR charging_location IN ('Home', 'Work', 'Public', 'Other')),
+          location TEXT CHECK (location IS NULL OR length(location) <= 200),
+          notes TEXT CHECK (notes IS NULL OR length(notes) <= 2000),
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          CHECK (charge_before IS NULL OR charge_after IS NULL OR charge_after >= charge_before),
+          CHECK ((kind = 'refuel' AND fuel_type IS NOT NULL AND full_tank IS NOT NULL AND charge_before IS NULL AND charge_after IS NULL AND charging_location IS NULL)
+            OR (kind = 'charge' AND fuel_type IS NULL AND full_tank IS NULL))
+        );
+        CREATE INDEX vehicle_fuel_history ON vehicle_fuel_entries(vehicle_id, entry_date DESC, id DESC);
+        PRAGMA user_version = 10;
       `);
     });
   }

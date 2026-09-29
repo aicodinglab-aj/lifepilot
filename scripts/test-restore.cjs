@@ -16,37 +16,37 @@ assert.ok(recovery[1].files==='previous-files'); replacementChecks++;
 if(failRollback&&s.marker===3)throw Error('rollback failed');
 d.version=s.version;d.marker=s.marker;d.deviceMetadataCleared=s.deviceMetadataCleared;if(failIncomingCopy&&s.marker===7){failIncomingCopy=false;throw Error('replace failed')}}};
 const hash=async(_a,b)=>{const h=crypto.createHash('sha256').update(Buffer.from(b)).digest();return h.buffer.slice(h.byteOffset,h.byteOffset+h.byteLength)};
-const mocks={'@/features/activity/operation-lifecycle':require('./helpers/load-typescript.cjs').activity,'expo-file-system':{Directory,File,Paths:{document:{uri:'document:'},cache:{uri:'cache:'}}},'expo-constants':{default:{expoConfig:{version:'1'},nativeBuildVersion:'1'}},'expo-crypto':{randomUUID:crypto.randomUUID,CryptoDigestAlgorithm:{SHA256:'SHA-256'},digest:hash},'expo-sqlite':sqlite,'@/database/migrate':{DATABASE_VERSION:9,migrateDatabase:async db=>{if(db.marker===99)throw Error('migration');db.version=9;db.bytes[0]=9}}};
+const mocks={'@/features/activity/operation-lifecycle':require('./helpers/load-typescript.cjs').activity,'expo-file-system':{Directory,File,Paths:{document:{uri:'document:'},cache:{uri:'cache:'}}},'expo-constants':{default:{expoConfig:{version:'1'},nativeBuildVersion:'1'}},'expo-crypto':{randomUUID:crypto.randomUUID,CryptoDigestAlgorithm:{SHA256:'SHA-256'},digest:hash},'expo-sqlite':sqlite,'@/database/migrate':{DATABASE_VERSION:10,migrateDatabase:async db=>{if(db.marker===99)throw Error('migration');db.version=10;db.bytes[0]=10}}};
 function load(rel){const e={};vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(__dirname,'..',rel),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText,{exports:e,require:n=>n in mocks?mocks[n]:load(`${n.startsWith('@/')?'src/'+n.slice(2):path.join(path.dirname(rel),n)}.ts`),TextEncoder,TextDecoder,Uint8Array,Date,JSON,Set,Object,Error});return e}
 let packageNumber=0;
-async function packageFor(service,version=9,marker=7,withFile=true){
+async function packageFor(service,version=10,marker=7,withFile=true){
  const saved=[...files].filter(([k])=>k.startsWith('document:/vehicle-photos/')); if(!withFile){for(const[k]of saved)files.delete(k);dirs.delete('document:/vehicle-photos')}else{dirs.add('document:/vehicle-photos');files.set('document:/vehicle-photos/old.jpg',Uint8Array.from([4]))}
  const out=new File('document:',`source-${++packageNumber}.lpbackup`),created=(await service.createBackup(new DB([version,marker]),{destination:out,now:new Date('2026-01-01T00:00:00Z')})).file;
  if(!withFile){dirs.add('document:/vehicle-photos');for(const[k,v]of saved)files.set(k,v)} return created;
 }
 async function mutate(file,fn){const p=JSON.parse(await file.text());fn(p);file.write(JSON.stringify(p))}
 async function main(){const backup=load('src/features/backup/backup-service.ts'),restore=load('src/features/backup/restore-service.ts');
- const source=await packageFor(backup),sourceBefore=await source.text(),active=new DB([9,1]);files.set('document:/vehicle-photos/current.jpg',Uint8Array.from([8]));
+ const source=await packageFor(backup),sourceBefore=await source.text(),active=new DB([10,1]);files.set('document:/vehicle-photos/current.jpg',Uint8Array.from([8]));
  const inspection=await restore.inspectRestore(source);assert.equal(inspection.compatibility,'current');assert.equal(active.marker,1);assert.equal(await source.text(),sourceBefore);
  const coordinated={dataAccessSuspended:true};
  const engineRestore=restore.restoreBackup;
  await assert.rejects(()=>engineRestore(active,source,coordinated),/exclusive maintenance/);
  restore.restoreBackup=async(db,file)=>{const owner=await mocks['@/features/activity/operation-lifecycle'].applicationActivity.suspend();try{return await engineRestore(db,file,owner.authorization)}finally{owner.resume()}};const result=await restore.restoreBackup(active,source,coordinated);assert.equal(active.marker,7);assert.equal(active.deviceMetadataCleared,true,'source-device notification metadata must be reset');assert.equal(result.restartRequired,true);assert.equal(new Directory('cache:','lifepilot-restore-staging').exists,false);assert.equal(await source.text(),sourceBefore);assert.equal(files.has('document:/vehicle-photos/old.jpg'),true);
- const corrupt=await packageFor(backup,9,8);await mutate(corrupt,p=>p.payloads['database/lifepilot.db']='AAAA');await assert.rejects(()=>restore.inspectRestore(corrupt),e=>e.code==='integrity');
- const attach=await packageFor(backup,9,8);await mutate(attach,p=>{const k=Object.keys(p.payloads).find(x=>x.startsWith('files/'));p.payloads[k]='AAAA'});await assert.rejects(()=>restore.inspectRestore(attach),e=>e.code==='integrity');
- const missing=await packageFor(backup,9,8);await mutate(missing,p=>delete p.payloads[p.manifest.entries[0].path]);await assert.rejects(()=>restore.inspectRestore(missing),e=>e.code==='integrity');
- const extra=await packageFor(backup,9,8);await mutate(extra,p=>p.payloads['files/vehicle-photos/extra']='AA==');await assert.rejects(()=>restore.inspectRestore(extra),e=>e.code==='integrity');
- const duplicate=await packageFor(backup,9,8);await mutate(duplicate,p=>p.manifest.entries.push({...p.manifest.entries[0]}));await assert.rejects(()=>restore.inspectRestore(duplicate),e=>e.code==='integrity');
- const unsafe=await packageFor(backup,9,8);await mutate(unsafe,p=>p.manifest.entries[1].path='files/vehicle-photos/../escape');await assert.rejects(()=>restore.inspectRestore(unsafe),e=>e.code==='unsafe-path');assert.equal(files.has('document:/sentinel'),false);
- const newer=await packageFor(backup,10,8,false);await assert.rejects(()=>restore.inspectRestore(newer),e=>e.code==='incompatible-schema');assert.equal(active.marker,7);
- const older=await packageFor(backup,8,6,false);assert.equal((await restore.inspectRestore(older)).compatibility,'upgrade');await restore.restoreBackup(active,older,coordinated);assert.equal(active.version,9);assert.equal(active.marker,6);
- const mismatch=await packageFor(backup,9,8,false);await mutate(mismatch,p=>p.manifest.database.schemaVersion=8);await assert.rejects(()=>restore.inspectRestore(mismatch),e=>e.code==='database-validation');
+ const corrupt=await packageFor(backup,10,8);await mutate(corrupt,p=>p.payloads['database/lifepilot.db']='AAAA');await assert.rejects(()=>restore.inspectRestore(corrupt),e=>e.code==='integrity');
+ const attach=await packageFor(backup,10,8);await mutate(attach,p=>{const k=Object.keys(p.payloads).find(x=>x.startsWith('files/'));p.payloads[k]='AAAA'});await assert.rejects(()=>restore.inspectRestore(attach),e=>e.code==='integrity');
+ const missing=await packageFor(backup,10,8);await mutate(missing,p=>delete p.payloads[p.manifest.entries[0].path]);await assert.rejects(()=>restore.inspectRestore(missing),e=>e.code==='integrity');
+ const extra=await packageFor(backup,10,8);await mutate(extra,p=>p.payloads['files/vehicle-photos/extra']='AA==');await assert.rejects(()=>restore.inspectRestore(extra),e=>e.code==='integrity');
+ const duplicate=await packageFor(backup,10,8);await mutate(duplicate,p=>p.manifest.entries.push({...p.manifest.entries[0]}));await assert.rejects(()=>restore.inspectRestore(duplicate),e=>e.code==='integrity');
+ const unsafe=await packageFor(backup,10,8);await mutate(unsafe,p=>p.manifest.entries[1].path='files/vehicle-photos/../escape');await assert.rejects(()=>restore.inspectRestore(unsafe),e=>e.code==='unsafe-path');assert.equal(files.has('document:/sentinel'),false);
+ const newer=await packageFor(backup,11,8,false);await assert.rejects(()=>restore.inspectRestore(newer),e=>e.code==='incompatible-schema');assert.equal(active.marker,7);
+ const older=await packageFor(backup,8,6,false);assert.equal((await restore.inspectRestore(older)).compatibility,'upgrade');await restore.restoreBackup(active,older,coordinated);assert.equal(active.version,10);assert.equal(active.marker,6);
+ const mismatch=await packageFor(backup,10,8,false);await mutate(mismatch,p=>p.manifest.database.schemaVersion=8);await assert.rejects(()=>restore.inspectRestore(mismatch),e=>e.code==='database-validation');
  const migration=await packageFor(backup,8,99,false);const beforeMigration=active.marker;await assert.rejects(()=>restore.restoreBackup(active,migration,coordinated),e=>e.code==='migration');assert.equal(active.marker,beforeMigration);
- const rollbackSource=await packageFor(backup,9,7,false);files.set('document:/vehicle-photos/keep.jpg',Uint8Array.from([42]));active.marker=3;failIncomingCopy=true;await assert.rejects(()=>restore.restoreBackup(active,rollbackSource,coordinated));assert.equal(active.marker,3);assert.equal(files.get('document:/vehicle-photos/keep.jpg')[0],42);
- const empty=await packageFor(backup,9,5,false);await restore.restoreBackup(active,empty,coordinated);assert.equal(new Directory('document:','vehicle-photos').list().length,0);
+ const rollbackSource=await packageFor(backup,10,7,false);files.set('document:/vehicle-photos/keep.jpg',Uint8Array.from([42]));active.marker=3;failIncomingCopy=true;await assert.rejects(()=>restore.restoreBackup(active,rollbackSource,coordinated));assert.equal(active.marker,3);assert.equal(files.get('document:/vehicle-photos/keep.jpg')[0],42);
+ const empty=await packageFor(backup,10,5,false);await restore.restoreBackup(active,empty,coordinated);assert.equal(new Directory('document:','vehicle-photos').list().length,0);
 
  // A failed rollback retains its database, files, metadata and staged incoming files.
- const catastrophic=await packageFor(backup,9,7,true);active.marker=3;
+ const catastrophic=await packageFor(backup,10,7,true);active.marker=3;
  files.set('document:/vehicle-photos/keep.jpg',Uint8Array.from([42]));
  failIncomingCopy=true;failRollback=true;
  await assert.rejects(()=>restore.restoreBackup(active,catastrophic,coordinated),e=>e instanceof restore.RollbackFailureError);
