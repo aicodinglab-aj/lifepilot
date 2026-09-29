@@ -5,7 +5,7 @@ const { DatabaseSync, backup } = require('node:sqlite');
 const { createLoader } = require('./load-typescript.cjs');
 
 // Real SQLite databases and bytes; Expo filesystem/native APIs remain adapters.
-function fixture() {
+function fixture(mocks = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'lifepilot-fuel-'));
   const connections = new Set();
   let beforeRun = async () => {}, beforeClose = async () => {};
@@ -67,6 +67,7 @@ function fixture() {
       const digest = crypto.createHash('sha256').update(new Uint8Array(bytes)).digest();
       return digest.buffer.slice(digest.byteOffset, digest.byteOffset + digest.byteLength);
     } },
+    ...mocks,
   });
   return { root, database, load, File, Directory, document,
     interceptRun(callback) { beforeRun = callback; }, interceptClose(callback) { beforeClose = callback; },

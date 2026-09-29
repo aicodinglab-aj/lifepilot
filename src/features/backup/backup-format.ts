@@ -26,7 +26,8 @@ export type BackupPackage = {
 };
 
 export class BackupError extends Error {
-  constructor(public readonly code: 'snapshot' | 'file-read' | 'package' | 'integrity' | 'unsupported-format' | 'unsafe-path' | 'incompatible-schema' | 'extraction' | 'database-validation' | 'rollback-preparation' | 'replacement' | 'migration' | 'rollback' | 'cleanup', message: string) {
+  cleanupIncomplete = false;
+  constructor(public readonly code: 'busy' | 'snapshot' | 'file-read' | 'package' | 'integrity' | 'unsupported-format' | 'unsafe-path' | 'incompatible-schema' | 'extraction' | 'database-validation' | 'rollback-preparation' | 'replacement' | 'migration' | 'rollback' | 'cleanup', message: string) {
     super(message); this.name = 'BackupError';
   }
 }

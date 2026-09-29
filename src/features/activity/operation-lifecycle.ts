@@ -7,7 +7,7 @@ export type MaintenanceAuthorization = {
   readonly [exclusiveBrand]: true;
   readonly dataAccessSuspended: true;
 };
-export type ActivityState = 'normal' | 'suspending' | 'exclusive' | 'resuming';
+export type ActivityState = 'normal' | 'snapshot-draining' | 'snapshot' | 'suspending' | 'exclusive' | 'resuming';
 
 export class OperationSuspendedError extends Error {
   constructor() { super('LifePilot maintenance is in progress. Please wait.'); }
@@ -47,6 +47,24 @@ export function createActivityCoordinator() {
     try { return await action(lease.context); }
     finally { lease.release(); }
   }
+  // Top-level read capture only: never acquire a normal lease or issue restore
+  // authorization. Admitted workflows (including nested cleanup) drain first.
+  async function captureSnapshot<T>(capture: () => Promise<T>, parent?: OperationContext): Promise<T> {
+    if (parent) throw new Error('Snapshot capture cannot nest inside an operation.');
+    if (state !== 'normal') throw new OperationSuspendedError();
+    state = 'snapshot-draining';
+    generation++;
+    const wait = active === 0 ? Promise.resolve() : new Promise<void>((resolve) => { drained = resolve; });
+    publish();
+    try {
+      await wait;
+      state = 'snapshot'; publish();
+      return await capture();
+    } finally {
+      // No public release handle: another caller cannot release this capture.
+      state = 'normal'; publish();
+    }
+  }
   // Calling this function closes admission BEFORE it returns its promise.
   function suspend() {
     if (state !== 'normal') throw new OperationSuspendedError();
@@ -75,7 +93,7 @@ export function createActivityCoordinator() {
     });
   }
   return {
-    acquire, run, suspend,
+    acquire, run, suspend, captureSnapshot,
     getState: () => state,
     getActiveCount: () => active,
     getGeneration: () => generation,

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Alert, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Directory, File } from 'expo-file-system';
@@ -13,15 +13,19 @@ import { useAppearance } from '@/features/appearance/appearance-provider';
 import { createBackup, type BackupResult } from '@/features/backup/backup-service';
 import { inspectRestore } from '@/features/backup/restore-service';
 import { useRestoreCoordinator } from '@/features/backup/restore-coordinator';
+import { BackupError } from '@/features/backup/backup-format';
 
-const message=(e:unknown)=>e instanceof Error?e.message:'Please try again.';
+const message=(e:unknown)=>(e instanceof Error?e.message:'Please try again.')+(e instanceof BackupError&&e.cleanupIncomplete?' Temporary backup cleanup is incomplete. Your source data was not changed.':'');
 const size=(bytes:number)=>bytes<1024?`${bytes} B`:bytes<1048576?`${(bytes/1024).toFixed(1)} KB`:`${(bytes/1048576).toFixed(1)} MB`;
 export default function BackupRestoreScreen(){
  const db=useSQLiteContext(),{colors}=useAppearance(),coordinator=useRestoreCoordinator();
  const [busy,setBusy]=useState<'backup'|'restore'|null>(null),[created,setCreated]=useState<BackupResult|null>(null);
- const backup=async()=>{if(busy)return;setBusy('backup');try{setCreated(await createBackup(db));}catch(e){Alert.alert('Backup not created',message(e));}finally{setBusy(null)}};
- const save=async()=>{if(!created||busy)return;setBusy('backup');try{const directory=await Directory.pickDirectoryAsync();const target=directory.createFile(created.file.name,'application/octet-stream');await created.file.copy(target,{overwrite:true});Alert.alert('Backup saved','Your LifePilot backup was saved to the selected location.');}catch(e){Alert.alert('Backup not saved',message(e));}finally{setBusy(null)}};
- const select=async()=>{if(busy)return;setBusy('restore');try{const picked=await File.pickFileAsync({mimeTypes:['application/octet-stream','application/json','*/*']});if(picked.canceled){setBusy(null);return}const info=await inspectRestore(picked.result);Alert.alert('Replace current LifePilot data?',`Created: ${new Date(info.createdAt).toLocaleString()}\nLifePilot: ${info.appVersion}\nDatabase: ${info.compatibility === 'current'?'Compatible':'Compatible — upgrade required'}\nFiles: ${info.persistentFileCount}\nData size: ${size(info.approximateBytes)}\n\nRestoring this backup will replace the current LifePilot data on this device.`,[{text:'Cancel',style:'cancel',onPress:()=>setBusy(null)},{text:'Restore Backup',style:'destructive',onPress:()=>{void coordinator.runRestore(picked.result).catch(()=>setBusy(null));}}]);}catch(e){setBusy(null);Alert.alert('Backup cannot be restored',message(e));}};
+ const busyRef=useRef(false);
+ const begin=(kind:'backup'|'restore')=>{if(busyRef.current)return false;busyRef.current=true;setBusy(kind);return true;};
+ const finish=()=>{busyRef.current=false;setBusy(null);};
+ const backup=async()=>{if(!begin('backup'))return;try{const result=await createBackup(db);setCreated(result);if(result.cleanupIncomplete)Alert.alert('Backup created','Your backup is ready, but temporary backup cleanup is incomplete.');}catch(e){Alert.alert('Backup not created',message(e));}finally{finish()}};
+ const save=async()=>{if(!created||!begin('backup'))return;try{const directory=await Directory.pickDirectoryAsync();const target=directory.createFile(created.file.name,'application/octet-stream');await created.file.copy(target,{overwrite:true});Alert.alert('Backup saved','Your LifePilot backup was saved to the selected location.');}catch(e){Alert.alert('Backup not saved',message(e));}finally{finish()}};
+ const select=async()=>{if(!begin('restore'))return;try{const picked=await File.pickFileAsync({mimeTypes:['application/octet-stream','application/json','*/*']});if(picked.canceled){finish();return}const info=await inspectRestore(picked.result);Alert.alert('Replace current LifePilot data?',`Created: ${new Date(info.createdAt).toLocaleString()}\nLifePilot: ${info.appVersion}\nDatabase: ${info.compatibility === 'current'?'Compatible':'Compatible — upgrade required'}\nFiles: ${info.persistentFileCount}\nData size: ${size(info.approximateBytes)}\n\nRestoring this backup will replace the current LifePilot data on this device.`,[{text:'Cancel',style:'cancel',onPress:finish},{text:'Restore Backup',style:'destructive',onPress:()=>{void coordinator.runRestore(picked.result).catch(finish);}}],{cancelable:false});}catch(e){finish();Alert.alert('Backup cannot be restored',message(e));}};
  return <SafeAreaView edges={['left','right','bottom']} style={{flex:1,backgroundColor:colors.background}}><ScreenHeader title="Backup & Restore" fallbackHref="/settings"/><ScrollView contentContainerStyle={layout.screenContent}>
   <Text style={[typography.body,{color:colors.muted}]}>Keep a copy of your LifePilot data so you can move it to another phone or recover your data.</Text>
   <StandardCard><Section title="Backup" subtitle="Includes vehicles, personal expenses, tasks, service and coverage history, photos and supported attachments."><Button label="Create Backup" loading={busy==='backup'} disabled={busy!==null} onPress={()=>void backup()} icon={<SymbolView name={{ios:'archivebox',android:'backup',web:'backup'}} size={20} tintColor={colors.onPrimary}/>} /></Section></StandardCard>
