@@ -33,7 +33,7 @@ export default function CoverageDetailsScreen() {
         if (typeof recordId !== 'string') throw new Error('Invalid record link.');
         const [found, docs] = await Promise.all([getCoverageRecord(db, kind, vehicleId, recordId), getCoverageDocuments(db, kind, vehicleId, recordId)]);
         if (active) { setRecord(found); setDocuments(docs); setError(found ? null : 'This record no longer exists.'); }
-      } catch (cause) { if (active) setError(cause instanceof Error ? cause.message : 'Could not load record.'); }
+      } catch (cause) { console.error('Coverage record load failed.', cause); if (active) setError('Could not load this coverage record. Please try again.'); }
       finally { if (active) setLoading(false); }
     })();
     return () => { active = false; focused.current = false; };
@@ -50,7 +50,7 @@ export default function CoverageDetailsScreen() {
         if (result.cleanupPending) Alert.alert('Record deleted', 'Document cleanup is pending. Retry from Insurance & PUC or My Garage.');
         router.dismissTo({ pathname: '/vehicle/insurance-puc', params: { id: String(vehicleId) } });
       }
-    } catch (cause) { if (focused.current) Alert.alert('Could not delete record', cause instanceof Error ? cause.message : 'Please try again.'); }
+    } catch (cause) { console.error('Coverage record deletion failed.', cause); if (focused.current) Alert.alert('Could not delete record', 'We could not delete this coverage record. Please try again.'); }
     finally { working.current = false; setBusy(false); }
   }
   const title = routeKind === 'insurance' ? 'Insurance' : 'PUC';

@@ -20,6 +20,9 @@ function load(relative, dependencies = {}) {
 }
 const legacy = load('src/constants/lifepilot-theme.ts');
 const theme = load('src/features/appearance/theme.ts', { '@/constants/lifepilot-theme': legacy });
+const rootLayoutSource = fs.readFileSync(path.join(__dirname, '../src/app/_layout.tsx'), 'utf8');
+assert.match(rootLayoutSource, /LifePilot could not start\. Please try again/);
+assert.doesNotMatch(rootLayoutSource, /setDatabaseError\(error\.message\)/);
 function preferences() {
   return load('src/features/appearance/preference.ts', { './theme': theme });
 }
@@ -110,6 +113,12 @@ test('Settings About navigation and developer information render safely across a
   platform.OS = 'ios'; assert.match(text(about.default()), /17/);
   platform.OS = 'web'; assert.match(text(about.default()), /Not available/);
   config = null; platform.OS = 'android'; assert.match(text(about.default()), /Not available/);
+  config = { version: 'undefined', android: { versionCode: Number.NaN } };
+  const unavailable = text(about.default());
+  assert.doesNotMatch(unavailable, /undefined|null|NaN/);
+  assert.equal((unavailable.match(/Not available/g) ?? []).length, 2);
+  config = { version: '2.3.4', android: { versionCode: 42 } };
+  assert.match(text(about.default()), /2\.3\.4/); assert.match(text(about.default()), /42/);
 });
 
 test('fresh installation and upgrade without preference preserve LifePilot and existing data', async () => {

@@ -9,6 +9,13 @@ import { withVehicleOperation } from './vehicle-operation';
 
 export type SelectedVehiclePhoto = { id: string; uri: string; };
 
+export function safePhotoError(error: unknown) {
+  const saved = error instanceof Error ? /^(\d+) photos saved\./.exec(error.message)?.[1] : undefined;
+  return saved
+    ? `${saved} photos saved. The next photo could not be saved. Please try again.`
+    : 'We could not complete this photo action. Please try again.';
+}
+
 export async function pickVehiclePhotos(camera: boolean, cover = false): Promise<SelectedVehiclePhoto[]> {
   if (Platform.OS === 'web') throw new Error('Vehicle photo storage is available in the Android and iOS app.');
   if (camera) {
@@ -82,7 +89,7 @@ async function savePhotos(
         await insertPhoto(db, { id, vehicleId, localUri: uri, isCover: 0, createdAt: new Date().toISOString() }, makeCover, operation);
         saved++;
       } catch (error) {
-        console.error('Vehicle photo save failed.');
+        console.error('Vehicle photo save failed.', error);
 
         if (uri) {
           try {

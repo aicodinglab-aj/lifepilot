@@ -93,7 +93,7 @@ export default function VehicleOverviewScreen() {
             href={module === 'service' ? { pathname: '/vehicle/services', params }
               : module === 'insurance' ? { pathname: '/vehicle/insurance-puc', params }
                 : { pathname: '/vehicle/fuel', params }} />)}
-          <NavigationCard title="Documents & Photos" subtitle="Bills, certificates and vehicle photos"
+          <NavigationCard title="Photos" subtitle="View and manage vehicle photos"
             icon={{ ios: 'photo.on.rectangle', android: 'photo_library', web: 'photo_library' }}
             href={{ pathname: '/vehicle/photos', params }} />
         </View>

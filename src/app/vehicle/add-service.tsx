@@ -30,7 +30,7 @@ export default function AddServiceScreen() {
     if (working.current) return;
     working.current = true; setBusy(true);
     try { const selected = await pickVehiclePhotos(camera); setPhotos((current) => [...current, ...selected]); }
-    catch (cause) { Alert.alert('Could not select bills', cause instanceof Error ? cause.message : 'Please try again.'); }
+    catch (cause) { console.error('Service bill photo selection failed.', cause); Alert.alert('Could not select bills', 'We could not select bill photos. Please try again.'); }
     finally { working.current = false; setBusy(false); }
   }
   async function save() {
@@ -41,7 +41,7 @@ export default function AddServiceScreen() {
     try {
       await createService(db, state.vehicleId, form, photos);
       if (focused.current) router.dismissTo({ pathname: '/vehicle/services', params: { id: String(state.vehicleId) } });
-    } catch (cause) { if (focused.current) Alert.alert('Service not saved', cause instanceof Error ? cause.message : 'Please try again.'); }
+    } catch (cause) { console.error('Service save failed.', cause); if (focused.current) Alert.alert('Service not saved', 'We could not save this service. Please try again.'); }
     finally { working.current = false; setBusy(false); }
   }
   const validation = validateServiceForm(form);

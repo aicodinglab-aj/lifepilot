@@ -12,6 +12,8 @@ assert.match(coordinator,/Close and reopen LifePilot/);
 assert.match(coordinator,/Stop using LifePilot and close the application/);
 assert.match(coordinator,/restoreBlocksNavigation\(session.getState\(\)\)/);
 assert.match(screen,/Directory\.pickDirectoryAsync/);assert.match(screen,/File\.pickFileAsync/);
+assert.match(screen,/const begin=.*busyRef\.current/,'backup immediate invocation guard missing');
+assert.match(screen,/The operation could not be completed\. Please try again\./,'unexpected backup errors must be safe');
 const {createLoader}=require('./helpers/load-typescript.cjs');
 const deferred=()=>{let resolve,reject;const promise=new Promise((yes,no)=>{resolve=yes;reject=no});return{promise,resolve,reject};};
 let finished=false;

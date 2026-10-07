@@ -28,7 +28,7 @@ function RootLayout() {
     return (
       <View style={themed_styles.errorScreen} onLayout={() => { SplashScreen.hide(); }}>
         <Text style={themed_styles.errorTitle}>Could not open LifePilot</Text>
-        <Text style={themed_styles.errorText}>{databaseError}</Text>
+        <Text style={themed_styles.errorText}>LifePilot could not start. Please try again. If the problem continues, contact support.</Text>
         <Pressable
           accessibilityRole="button"
           onPress={() => setDatabaseError(null)}
@@ -43,7 +43,7 @@ function RootLayout() {
     <SQLiteProvider
       databaseName="lifepilot.db"
       options={databaseOptions}
-      onError={(error) => setDatabaseError(error.message)}
+      onError={(error) => { console.error('LifePilot database initialization failed.', error); setDatabaseError('initialization-failed'); }}
       onInit={migrateDatabase}>
       <RestoreCoordinator><ThemedNavigation /></RestoreCoordinator>
     </SQLiteProvider>
@@ -79,7 +79,7 @@ function ThemedNavigation() {
           <Stack.Screen name="vehicle/manage" options={{ title: 'Manage Vehicle' }} />
           <Stack.Screen name="vehicle/details" options={{ title: 'Vehicle Details' }} />
           <Stack.Screen name="vehicle/edit" options={{ title: 'Edit Vehicle Details' }} />
-          <Stack.Screen name="vehicle/photos" options={{ title: 'Documents & Photos' }} />
+          <Stack.Screen name="vehicle/photos" options={{ title: 'Photos' }} />
           <Stack.Screen name="vehicle/module" options={{ title: 'My Vehicle' }} />
         </Stack>
         </TaskProvider>

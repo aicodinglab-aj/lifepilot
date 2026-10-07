@@ -1,4 +1,4 @@
-# Vehicle photo milestone
+# Vehicle Photos\n\nCurrent active terminology is **Photos**. The active destination manages vehicle photos only; it does not offer general document uploads.
 
 ## Encoded photo URI fix (2026-09-08)
 
@@ -87,7 +87,7 @@ Version 2 creates `vehicle_photos` with a UUID text primary key, `vehicle_id` fo
 2. Each image is copied to `Paths.document/vehicle-photos/<vehicleId>/<photoUUID>.<extension>`. SQLite receives only the permanent reference after the copy succeeds. The first image becomes cover automatically.
 3. Import failure attempts to remove the unreferenced copy. Earlier successful images in a batch remain saved and the error reports their count. Failed cleanup is reported. An OS process kill between copy and insert can still leave an unused file; filesystem and SQLite cannot share an atomic transaction.
 4. Cover changes run in an exclusive database transaction. Garage focus reloads cover metadata. Saved iOS sandbox prefixes are rebased to the current documents directory using only a validated vehicle/photo suffix.
-5. Deletion looks up the photo using both vehicle ID and photo ID, validates the owned path, and deletes only that individual app copy. The original device-library image is untouched. A filesystem failure preserves the row for retry. If SQLite fails after file removal, a placeholder remains and retry safely removes the row. Deleting the cover promotes the oldest remaining photo transactionally.
+5. Current deletion first records retryable cleanup intent, removes only validated app-owned photo files, and then removes the related rows. The delete action looks up by vehicle ID and photo ID; vehicle deletion coordinates cascade cleanup, and failed filesystem cleanup remains retryable. Older entries below describe their original milestone and verification state. The original device-library image is untouched. A filesystem failure preserves the row for retry. If SQLite fails after file removal, a placeholder remains and retry safely removes the row. Deleting the cover promotes the oldest remaining photo transactionally.
 6. Missing files or decode failures display placeholders. Their database entries remain deletable; missing images cannot be newly selected as covers. App documents survive restarts but are removed on uninstall.
 
 ## Verification

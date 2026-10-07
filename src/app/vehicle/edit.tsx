@@ -2,7 +2,6 @@ import { useAppearance } from '@/features/appearance/appearance-provider';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { VehicleHeader, VehiclePage } from '@/components/vehicles/vehicle-page';
 import { VehicleDetailsEditor } from '@/components/vehicles/vehicle-details-editor';
-import { lifePilotColors as colors } from '@/constants/lifepilot-theme';
 import { useVehicle } from '@/features/vehicles/use-vehicle';
 
 export default function EditVehicleDetailsScreen() {

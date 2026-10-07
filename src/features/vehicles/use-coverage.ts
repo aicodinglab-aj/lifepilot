@@ -36,7 +36,7 @@ export function useCoverageSummary(vehicleId: number) {
       try {
         const [insurance, puc] = await Promise.all([getCurrentCoverage(db, 'insurance', vehicleId, today), getCurrentCoverage(db, 'puc', vehicleId, today)]);
         if (active) { setData({ insurance, puc }); setError(null); }
-      } catch (cause) { if (active) { setData(null); setError(cause instanceof Error ? cause.message : 'Could not load Insurance & PUC.'); } }
+      } catch (cause) { console.error('Coverage overview load failed.', cause); if (active) { setData(null); setError('Could not load Insurance & PUC. Please try again.'); } }
       finally { if (active) setLoading(false); }
     })();
     return () => { active = false; };

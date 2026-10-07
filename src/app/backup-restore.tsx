@@ -15,7 +15,7 @@ import { inspectRestore } from '@/features/backup/restore-service';
 import { useRestoreCoordinator } from '@/features/backup/restore-coordinator';
 import { BackupError } from '@/features/backup/backup-format';
 
-const message=(e:unknown)=>(e instanceof Error?e.message:'Please try again.')+(e instanceof BackupError&&e.cleanupIncomplete?' Temporary backup cleanup is incomplete. Your source data was not changed.':'');
+const message=(e:unknown)=>(e instanceof BackupError?e.message:'The operation could not be completed. Please try again.')+(e instanceof BackupError&&e.cleanupIncomplete?' Temporary backup cleanup is incomplete. Your source data was not changed.':'');
 const size=(bytes:number)=>bytes<1024?`${bytes} B`:bytes<1048576?`${(bytes/1024).toFixed(1)} KB`:`${(bytes/1048576).toFixed(1)} MB`;
 export default function BackupRestoreScreen(){
  const db=useSQLiteContext(),{colors}=useAppearance(),coordinator=useRestoreCoordinator();

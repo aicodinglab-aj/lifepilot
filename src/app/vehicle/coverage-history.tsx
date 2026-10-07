@@ -6,7 +6,6 @@ import { ActivityIndicator, FlatList, Pressable, Text, View } from 'react-native
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { VehicleHeader, VehiclePage } from '@/components/vehicles/vehicle-page';
 import { CoverageAction, CoverageStatusBadge, coverageStyles as styles } from '@/components/vehicles/coverage-ui';
-import { lifePilotColors as colors } from '@/constants/lifepilot-theme';
 import { COVERAGE_PAGE_SIZE, getCoverageHistory } from '@/database/vehicle-coverage';
 import { coverageTitle, parseCoverageKind, type CoverageRecord } from '@/features/vehicles/coverage-record';
 import { serviceMoney } from '@/features/vehicles/service-record';
@@ -31,7 +30,7 @@ export default function CoverageHistoryScreen() {
       try {
         const rows = await getCoverageHistory(db, parseCoverageKind(routeKind), state.vehicleId);
         if (generation.current === token) { setRecords(rows); setMore(rows.length === COVERAGE_PAGE_SIZE); setError(null); }
-      } catch (cause) { if (generation.current === token) setError(cause instanceof Error ? cause.message : 'Could not load history.'); }
+      } catch (cause) { console.error('Coverage history load failed.', cause); if (generation.current === token) setError('Could not load coverage history. Please try again.'); }
       finally { if (generation.current === token) setLoading(false); }
     })();
     return () => { generation.current++; };

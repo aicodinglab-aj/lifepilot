@@ -33,7 +33,7 @@ export default function ServiceDetailsScreen() {
         validateServiceOwner(vehicleId, serviceId);
         const [found, photos] = await Promise.all([getService(db, vehicleId, serviceId), getServiceBills(db, vehicleId, serviceId)]);
         if (active) { setRecord(found); setBills(photos); setError(found ? null : 'This service no longer exists.'); }
-      } catch (cause) { if (active) setError(cause instanceof Error ? cause.message : 'Could not load service.'); }
+      } catch (cause) { console.error('Service record load failed.', cause); if (active) setError('Could not load service. Please try again.'); }
       finally { if (active) setLoading(false); }
     })();
     return () => { active = false; focused.current = false; };
@@ -49,7 +49,7 @@ export default function ServiceDetailsScreen() {
         if (result.cleanupPending) Alert.alert('Service deleted', 'Bill file cleanup is pending. Retry cleanup from Service & Maintenance or My Garage.');
         router.dismissTo({ pathname: '/vehicle/services', params: { id: String(vehicleId) } });
       }
-    } catch (cause) { if (focused.current) Alert.alert('Could not delete service', cause instanceof Error ? cause.message : 'Please try again.'); }
+    } catch (cause) { console.error('Service deletion failed.', cause); if (focused.current) Alert.alert('Could not delete service', 'We could not delete this service. Please try again.'); }
     finally { working.current = false; setBusy(false); }
   }
   function confirmDelete() {

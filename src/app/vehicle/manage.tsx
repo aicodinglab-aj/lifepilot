@@ -51,7 +51,8 @@ export default function ManageVehicleScreen() {
           void (async () => {
             try { await deleteVehicle(db, vehicleId); returnToGarage(); }
             catch (cause) {
-              setError(cause instanceof Error ? cause.message : 'Deletion failed. Return to My Garage and try again.');
+              console.error('Vehicle deletion failed.', cause);
+              setError('Could not delete this vehicle. Please try again.');
             } finally { working.current = false; setBusy(false); }
           })();
         } },

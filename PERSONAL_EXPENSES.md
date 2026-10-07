@@ -2,13 +2,13 @@
 
 ## Implemented
 
-Home now opens a dedicated personal-finance dashboard. It shows current-local-month Income, Expenses and Balance from real personal transactions, plus the five most recent transactions across all dates. Empty totals are ₹0. Add, details, edit and explicitly confirmed deletion are available through Expo Router with visible Back controls. Screens use the existing black/emerald palette and shared form controls.
+Home now opens a dedicated personal-finance dashboard. It shows current-local-month Income, Expenses and Balance from real personal transactions, plus the five most recent transactions within the selected month. Empty totals are ₹0. Add, details, edit and explicitly confirmed deletion are available through Expo Router with visible Back controls. Screens use the existing black/emerald palette and shared form controls.
 
 The reusable editor supports Expense/Income, amount, matching category, calendar date, optional description, payment method and notes. Switching type clears the category selection. Payment methods are Cash, UPI, Credit Card, Debit Card, Bank Transfer and Other, with Not added to clear the optional value. Description is limited to 200 characters and notes to 2,000. Invalid amounts/dates/categories are rejected; save errors remain visible. Editing updates the same ID and preserves created_at. Save actions reject overlapping taps.
 
 History uses FlatList and database-side All/Expenses/Income and optional YYYY-MM filters. Newest dates appear first, with descending ID breaking ties. Keyset pagination fetches at most 41 rows, displays 40, and uses Previous/Next page controls. It retains only the current page's records and small cursor references, rather than accumulating all transactions. Queries use date/type/category indexes. Dashboard/detail/history reload on focus and app foreground; the dashboard also detects a local month rollover while open.
 
-No vehicle costs are imported or included. No budgets, recurring transactions, receipts, personal notifications, charts, cloud services, authentication or new dependencies were added.
+Historical Stage 1 scope: vehicle costs were excluded and that milestone did not add budgets, recurring transactions, receipts, personal notifications, charts, cloud services, authentication or dependencies. Personal Budgets V1 and Analytics are implemented in later milestones. Current schema is v11.
 
 ## Database v7 → v8
 
@@ -47,7 +47,7 @@ Modified:
 
 - `src/database/migrate.ts`: additive v8 schema and category seeds
 - `src/app/(tabs)/index.tsx`: enabled Personal Expense Manager card
-- `scripts/test-vehicle-photos.cjs`, `test-vehicle-details.cjs`, `test-vehicle-services.cjs`, `test-vehicle-coverage.cjs`, `test-reminders.cjs`: expected latest schema v8 (and future-version rejection v9 where relevant)
+- `scripts/test-vehicle-photos.cjs`, `test-vehicle-details.cjs`, `test-vehicle-services.cjs`, `test-vehicle-coverage.cjs`, `test-reminders.cjs`: historical Stage 1 schema expectations were v8 (future-version rejection v9); the current schema is v11
 
 No filesystem operations, vehicle business logic, notification calculations, EAS configuration, package versions or signing settings changed. Expo Router generated local types were regenerated using the offline Expo CLI.
 

@@ -6,7 +6,6 @@ import { ActivityIndicator, FlatList, Pressable, Text, View } from 'react-native
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { VehicleHeader, VehiclePage } from '@/components/vehicles/vehicle-page';
 import { ServiceAction, serviceStyles as styles } from '@/components/vehicles/service-ui';
-import { lifePilotColors as colors } from '@/constants/lifepilot-theme';
 import { getServiceHistory, getServiceSummary, SERVICE_PAGE_SIZE } from '@/database/vehicle-services';
 import { nextServiceLabel, serviceMoney, type ServiceRecord } from '@/features/vehicles/service-record';
 import { retryServiceCleanup } from '@/features/vehicles/service-maintenance';
@@ -37,12 +36,12 @@ export default function ServiceHistoryScreen() {
         if (!Number.isSafeInteger(vehicleId)) throw new Error('Invalid vehicle link.');
         let warning: string | null = null;
         try { await retryServiceCleanup(db, vehicleId); }
-        catch (cause) { warning = cause instanceof Error ? cause.message : 'Bill cleanup needs retry.'; }
+        catch (cause) { console.error('Service bill cleanup failed.', cause); warning = 'Some bill files could not be cleaned up. You can retry cleanup.'; }
         const [history, totals] = await Promise.all([getServiceHistory(db, vehicleId), getServiceSummary(db, vehicleId)]);
         if (generation.current === token) {
           setRecords(history); setSummary(totals); setMore(history.length === SERVICE_PAGE_SIZE); setError(null); setCleanupError(warning);
         }
-      } catch (cause) { if (generation.current === token) setError(cause instanceof Error ? cause.message : 'Could not load services.'); }
+      } catch (cause) { console.error('Service history load failed.', cause); if (generation.current === token) setError('Could not load services. Please try again.'); }
       finally { if (generation.current === token) setLoading(false); }
     })();
     return () => { generation.current++; };

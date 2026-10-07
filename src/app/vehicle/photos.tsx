@@ -9,7 +9,7 @@ import { VehicleHeader } from '@/components/vehicles/vehicle-page';
 import { lifePilotColors as colors } from '@/constants/lifepilot-theme';
 import { getVehiclePhotos } from '@/database/vehicle-photos';
 import { getVehicles } from '@/database/vehicles';
-import { addVehicleCoverPhoto, addVehiclePhotos, chooseCover, removeVehiclePhoto } from '@/features/vehicles/photo-service';
+import { addVehicleCoverPhoto, addVehiclePhotos, chooseCover, removeVehiclePhoto, safePhotoError } from '@/features/vehicles/photo-service';
 import type { Vehicle } from '@/features/vehicles/vehicle';
 import type { VehiclePhoto } from '@/features/vehicles/vehicle-photo';
 
@@ -44,7 +44,7 @@ export default function VehiclePhotosScreen() {
     working.current = true;
     setBusy(true);
     try { await action(); }
-    catch (cause) { Alert.alert('Photo action failed', cause instanceof Error ? cause.message : 'Please try again.'); }
+    catch (cause) { console.error('Vehicle photo action failed.', cause); Alert.alert('Photo action failed', safePhotoError(cause)); }
     finally { await load(); working.current = false; setBusy(false); }
   }
 
@@ -63,11 +63,11 @@ export default function VehiclePhotosScreen() {
     ]);
   }
 
-  if (loading) return <View style={themed_styles.center}><VehicleHeader title="Documents & Photos" /><ActivityIndicator color={appearance.colors.green} /></View>;
-  if (error || !vehicle) return <View style={themed_styles.center}><VehicleHeader title="Documents & Photos" /><Text style={themed_styles.text}>{error}</Text><Action label="Try again" onPress={() => { void load(); }} /></View>;
+  if (loading) return <View style={themed_styles.center}><VehicleHeader title="Photos" /><ActivityIndicator color={appearance.colors.green} /></View>;
+  if (error || !vehicle) return <View style={themed_styles.center}><VehicleHeader title="Photos" /><Text style={themed_styles.text}>{error}</Text><Action label="Try again" onPress={() => { void load(); }} /></View>;
   const cover = photos.find((photo) => photo.isCover === 1);
   return <SafeAreaView edges={['bottom']} style={themed_styles.screen}>
-    <VehicleHeader title="Documents & Photos" vehicleId={busy ? undefined : vehicleId} />
+    <VehicleHeader title="Photos" vehicleId={busy ? undefined : vehicleId} />
     <FlatList data={photos} keyExtractor={(photo) => photo.id} numColumns={2}
       contentContainerStyle={themed_styles.content} columnWrapperStyle={themed_styles.row}
       ListHeaderComponent={<View style={themed_styles.heading}>
@@ -78,7 +78,7 @@ export default function VehiclePhotosScreen() {
         <VehiclePhotoImage vehicleId={vehicleId} photoId={cover?.id ?? null} uri={cover?.localUri ?? null} style={{ height: 230 }} />
         <Action label={cover ? 'Change Cover Photo' : 'Add Cover Photo'} disabled={busy} onPress={pickCover} />
         <Text style={themed_styles.title}>Photos ({photos.length})</Text>
-        <Text style={themed_styles.text}>Your vehicle photo gallery. Document uploads are coming in a future update.</Text>
+        <Text style={themed_styles.text}>Your vehicle photo gallery.</Text>
         <View style={themed_styles.row}>
           <Action label="Add photos" disabled={busy} onPress={() => { void perform(() => addVehiclePhotos(db, vehicleId, false)); }} />
           <Action label="Take photo" disabled={busy} onPress={() => { void perform(() => addVehiclePhotos(db, vehicleId, true)); }} />

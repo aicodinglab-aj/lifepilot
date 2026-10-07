@@ -22,7 +22,8 @@ export function useVehicle() {
         const found = (await getVehicles(db, vehicleId))[0] ?? null;
         if (active) { setVehicle(found); setError(found ? null : 'This vehicle no longer exists.'); }
       } catch (cause) {
-        if (active) { setVehicle(null); setError(cause instanceof Error ? cause.message : 'Could not load this vehicle.'); }
+        console.error('Vehicle load failed.', cause);
+        if (active) { setVehicle(null); setError('Could not load this vehicle. Please try again.'); }
       } finally { if (active) setLoading(false); }
     })();
     return () => { active = false; };

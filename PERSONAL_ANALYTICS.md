@@ -20,7 +20,7 @@ Tap a category in either breakdown or Top Spending to open the existing paginate
 
 ## Database and precision
 
-**No migration was needed. Schema remains v8.** No stored totals, schema changes, resets or file operations were added. Personal analytics read only `personal_transactions` and `personal_categories`; service costs, insurance premiums, PUC costs and all other vehicle data remain separate.
+**Historical Stage 1 note:** no migration was needed for that analytics milestone at the then-current schema v8. The current LifePilot schema is v11. No stored totals, schema changes, resets or file operations were added. Personal analytics read only `personal_transactions` and `personal_categories`; service costs, insurance premiums, PUC costs and all other vehicle data remain separate.
 
 `database/personal-analytics.ts` executes one parameterized SELECT containing two UNION ALL aggregate branches:
 

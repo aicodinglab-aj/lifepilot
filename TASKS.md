@@ -23,7 +23,7 @@ page one. V1 has no external writers/cloud sync.
 ## Screens
 
 - Home → Tasks / To-Do (`/tasks`): summary counts, Today, Overdue, Upcoming,
-  No due date, Completed and All open views; category/priority filters; quick
+  No due date, Completed and All Open views; category/priority filters; quick
   complete/reopen; explicit Load more.
 - `/tasks/edit`: Add without an ID, Edit with an ID. Updates preserve the ID and
   completion state. Required title, optional description/category/date/time,
@@ -79,7 +79,7 @@ settings can delay delivery; V1 adds no exact-alarm native configuration.
 Run `node scripts/test-tasks.cjs`, existing migration/reminder/appearance tests,
 `npx tsc --noEmit`, changed-file ESLint and `git diff --check`.
 Test delivery/cancellation/permission on a device as well as automated mocks.
-Local notifications are supported in Expo Go; a current preview APK is preferred
+Local notifications are unavailable in Expo Go and web; they require a development, preview or production build. In-app tasks remain available there. A current preview APK is preferred
 for release behavior. No new native dependency/configuration is introduced, but
 an old standalone APK needs a new build to include this JavaScript and migration.
 

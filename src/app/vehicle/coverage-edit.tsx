@@ -52,7 +52,7 @@ function CoverageEditor({ routeKind, recordId }: { routeKind: string; recordId?:
           setRecord(found); setForm(found ? coverageToForm(found) : { ...emptyCoverageForm }); setDocuments(saved);
           setRemoved([]); setPhotos([]); setError(null); setErrors({});
         }
-      } catch (cause) { if (active) setError(cause instanceof Error ? cause.message : 'Could not load record.'); }
+      } catch (cause) { console.error('Coverage record load failed.', cause); if (active) setError('Could not load this coverage record. Please try again.'); }
       finally { if (active) setLoading(false); }
     })();
     return () => { active = false; };
@@ -61,7 +61,7 @@ function CoverageEditor({ routeKind, recordId }: { routeKind: string; recordId?:
     if (working.current) return;
     working.current = true; setBusy(true);
     try { const selected = await pickVehiclePhotos(camera); setPhotos((current) => [...current, ...selected]); }
-    catch (cause) { if (focused.current) Alert.alert('Could not select documents', cause instanceof Error ? cause.message : 'Please try again.'); }
+    catch (cause) { console.error('Coverage document photo selection failed.', cause); if (focused.current) Alert.alert('Could not select documents', 'We could not select document photos. Please try again.'); }
     finally { working.current = false; setBusy(false); }
   }
   async function save() {
@@ -79,7 +79,7 @@ function CoverageEditor({ routeKind, recordId }: { routeKind: string; recordId?:
         if (record) router.dismissTo({ pathname: '/vehicle/coverage-details', params });
         else router.replace({ pathname: '/vehicle/coverage-details', params });
       }
-    } catch (cause) { if (focused.current) Alert.alert('Changes not saved', cause instanceof Error ? cause.message : 'Please try again.'); }
+    } catch (cause) { console.error('Coverage save failed.', cause); if (focused.current) Alert.alert('Changes not saved', 'We could not save this coverage record. Please try again.'); }
     finally { working.current = false; setBusy(false); }
   }
   const title = routeKind === 'insurance' ? 'Insurance' : 'PUC';

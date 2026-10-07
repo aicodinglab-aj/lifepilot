@@ -31,6 +31,9 @@ function database() {
   return { raw, db };
 }
 async function main() {
+  const screen = fs.readFileSync(path.join(__dirname, '../src/app/tasks/index.tsx'), 'utf8');
+  assert.match(screen, /label: 'All Open', value: 'All open'/);
+  assert.match(fs.readFileSync(path.join(__dirname, '../src/database/tasks.ts'), 'utf8'), /'All open': 't\.completed = 0'/);
   const migration = load('src/database/migrate.ts'), repo = load('src/database/tasks.ts'), domain = load('src/features/tasks/task.ts');
   const { raw, db } = database();
   raw.exec('PRAGMA foreign_keys = ON');

@@ -21,7 +21,7 @@ export default function InsurancePucScreen() {
     let active = true;
     if (Number.isSafeInteger(state.vehicleId)) void retryCoverageCleanup(db, state.vehicleId)
       .then(() => { if (active) setWarning(null); })
-      .catch((cause: unknown) => { if (active) setWarning(cause instanceof Error ? cause.message : 'Document cleanup needs retry.'); });
+      .catch((cause: unknown) => { console.error('Coverage document cleanup failed.', cause); if (active) setWarning('Some document files could not be cleaned up. You can retry cleanup.'); });
     return () => { active = false; };
     // Retry reruns cleanup while focused.
     // eslint-disable-next-line react-hooks/exhaustive-deps

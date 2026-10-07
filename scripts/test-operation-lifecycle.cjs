@@ -62,9 +62,12 @@ async function main() {
   await test('vehicle creation keeps its lease across insertion, nested photo workflow and error cleanup', async () => {
     const entered = deferred(), finish = deferred(), events = [];
     const mocks = {
-      './photo-service': { saveSelectedVehiclePhotos: async (_db, _id, _photos, _cover, context) => {
-        await activity.run(async () => { events.push('photo'); throw Error('copy failure'); }, context);
-      } },
+      './photo-service': {
+        safePhotoError: error => error instanceof Error ? error.message : 'photo error',
+        saveSelectedVehiclePhotos: async (_db, _id, _photos, _cover, context) => {
+          await activity.run(async () => { events.push('photo'); throw Error('copy failure'); }, context);
+        }
+      },
     };
     const load = createLoader(mocks), activity = load('src/features/activity/operation-lifecycle.ts').applicationActivity;
     const create = load('src/features/vehicles/create-vehicle.ts').createVehicleWithPhotos;
@@ -80,16 +83,20 @@ async function main() {
     const opened = deferred(), finishTransaction = deferred(), closing = deferred(), finishClose = deferred();
     const cleaning = deferred(), finishCleanup = deferred(), events = [];
     const load = createLoader({
-      'expo-sqlite': { openDatabaseAsync: async () => ({
-        execAsync: async () => {}, runAsync: async () => {},
-        withTransactionAsync: async action => { opened.resolve(); await finishTransaction.promise; await action(); },
-        closeAsync: async () => { events.push('close'); closing.resolve(); await finishClose.promise; },
-      }) },
+      'expo-sqlite': {
+        openDatabaseAsync: async () => ({
+          execAsync: async () => { }, runAsync: async () => { },
+          withTransactionAsync: async action => { opened.resolve(); await finishTransaction.promise; await action(); },
+          closeAsync: async () => { events.push('close'); closing.resolve(); await finishClose.promise; },
+        })
+      },
       '@/storage/vehicle-photos': { deleteVehiclePhotoDirectory: async () => { events.push('cleanup'); cleaning.resolve(); await finishCleanup.promise; } },
     });
     const activity = load('src/features/activity/operation-lifecycle.ts').applicationActivity;
-    const db = { databasePath: '/private/lifepilot.db', options: {}, getFirstAsync: async sql => sql.includes('vehicle_deletion_cleanup') ? { vehicle_id: 1 } : null,
-      runAsync: async () => { events.push('cleanup-row'); } };
+    const db = {
+      databasePath: '/private/lifepilot.db', options: {}, getFirstAsync: async sql => sql.includes('vehicle_deletion_cleanup') ? { vehicle_id: 1 } : null,
+      runAsync: async () => { events.push('cleanup-row'); }
+    };
     const deletion = load('src/features/vehicles/delete-vehicle.ts').deleteVehicle(db, 1);
     await opened.promise; let exclusive = false;
     const maintenance = activity.suspend().then(o => { exclusive = true; return o; });
@@ -184,15 +191,17 @@ async function main() {
       'expo-crypto': { randomUUID: () => 'id' },
       'expo-sqlite': {},
       '@/storage/service-bills': {
-        validateServiceOwner() {},
+        validateServiceOwner() { },
         copyServiceBill: async () => { entered.resolve(); await failCopy.promise; throw Error('copy failed'); },
         deleteServiceBillDirectory: async () => { cleaning.resolve(); await finishCleanup.promise; events.push('files-cleaned'); },
       },
       './service-record': { serviceFormToDraft: () => ({}) },
     });
     const activity = load('src/features/activity/operation-lifecycle.ts').applicationActivity;
-    const db = { getFirstAsync: async sql => sql.includes('SELECT id FROM vehicles') ? { id: 1 } : null,
-      runAsync: async sql => { if (sql.startsWith('DELETE')) events.push('cleanup-row'); } };
+    const db = {
+      getFirstAsync: async sql => sql.includes('SELECT id FROM vehicles') ? { id: 1 } : null,
+      runAsync: async sql => { if (sql.startsWith('DELETE')) events.push('cleanup-row'); }
+    };
     const pending = load('src/features/vehicles/service-maintenance.ts').createService(db, 1, {}, [{ uri: 'photo' }]);
     const rejected = assert.rejects(pending, /copy failed/);
     await entered.promise; let exclusive = false;

@@ -58,7 +58,8 @@ export default function AddVehicleScreen() {
       setPhotos((current) => [...current, ...selected]);
       setCoverId((current) => current ?? selected[0]?.id);
     } catch (error) {
-      Alert.alert('Could not select photos', error instanceof Error ? error.message : 'Please try again.');
+      console.error('Vehicle photo selection failed.', error);
+      Alert.alert('Could not select photos', 'We could not select photos. Please try again.');
     } finally {
       working.current = false;
       setIsPicking(false);
@@ -106,6 +107,7 @@ export default function AddVehicleScreen() {
         router.back();
       }
     } catch (error) {
+      if (!(error instanceof DuplicateRegistrationError)) console.error('Vehicle creation failed.', error);
       if (error instanceof DuplicateRegistrationError) {
         setErrors((current) => ({ ...current, registrationNumber: error.message }));
         setSubmitError(error.message);

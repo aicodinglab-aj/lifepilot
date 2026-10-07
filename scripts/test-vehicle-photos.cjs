@@ -40,6 +40,17 @@ function database() {
 }
 
 async function main() {
+  const screen = fs.readFileSync(path.join(__dirname, '../src/app/vehicle/photos.tsx'), 'utf8');
+  const layout = fs.readFileSync(path.join(__dirname, '../src/app/_layout.tsx'), 'utf8');
+  const detail = fs.readFileSync(path.join(__dirname, '../src/app/vehicle/[id].tsx'), 'utf8');
+  assert.match(screen, /VehicleHeader title="Photos"/);
+  assert.doesNotMatch(screen, /Documents & Photos|Document uploads are coming/);
+  assert.match(screen, /addVehiclePhotos\(db, vehicleId/);
+  assert.match(detail, /pathname: '\/vehicle\/photos'/);
+  assert.match(detail, /title="Photos" subtitle="View and manage vehicle photos"/);
+  assert.match(layout, /name="vehicle\/photos" options=\{\{ title: 'Photos' \}\}/);
+  assert.match(screen, /safePhotoError\(cause\)/);
+  assert.doesNotMatch(screen, /cause\.message/);
   const migration = load('src/database/migrate.ts');
   const repo = load('src/database/vehicle-photos.ts');
   const vehicles = load('src/database/vehicles.ts');
@@ -154,6 +165,8 @@ async function main() {
       }),
     },
   });
+  assert.equal(service.safePhotoError(new Error('SQLite constraint failed at file:///private/data')), 'We could not complete this photo action. Please try again.');
+  assert.equal(service.safePhotoError(new Error('1 photos saved. ENOENT file:///private/image.jpg')), '1 photos saved. The next photo could not be saved. Please try again.');
   await service.addVehiclePhotos(db, 1, false);
   assert.equal(events.length, 0, 'cancel must not write anything');
   await service.removeVehiclePhoto(db, 2, id);

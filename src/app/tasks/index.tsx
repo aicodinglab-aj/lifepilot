@@ -17,7 +17,7 @@ import { useTaskNotifications } from '@/features/tasks/task-provider';
 import { useAppearance } from '@/features/appearance/appearance-provider';
 
 const primaryViews: { label: string; value: TaskView }[] = [
-  { label: 'Today', value: 'Today' }, { label: 'Upcoming', value: 'Upcoming' }, { label: 'All', value: 'All open' },
+  { label: 'Today', value: 'Today' }, { label: 'Upcoming', value: 'Upcoming' }, { label: 'All Open', value: 'All open' },
 ];
 const secondaryViews: TaskView[] = ['Overdue', 'No due date', 'Completed'];
 

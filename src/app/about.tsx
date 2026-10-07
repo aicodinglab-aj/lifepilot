@@ -11,7 +11,7 @@ import { useAppearance } from '@/features/appearance/appearance-provider';
 export default function AboutScreen() {
   const { colors } = useAppearance();
   const config = Constants.expoConfig;
-  const version = config?.version ?? 'Not available';
+  const version = usableMetadata(config?.version);
   const build = Platform.OS === 'android' ? config?.android?.versionCode
     : Platform.OS === 'ios' ? config?.ios?.buildNumber : undefined;
 
@@ -27,7 +27,7 @@ export default function AboutScreen() {
       <StandardCard>
         <Section title="App Information">
           <InfoRow label="Version" value={version} />
-          <InfoRow label="Build" value={build == null ? 'Not available' : String(build)} />
+          <InfoRow label="Build" value={usableMetadata(build == null ? undefined : String(build))} />
         </Section>
       </StandardCard>
       <StandardCard>
@@ -39,6 +39,10 @@ export default function AboutScreen() {
       </Text>
     </ScrollView>
   </SafeAreaView>;
+}
+
+function usableMetadata(value: string | undefined) {
+  return value && value !== 'undefined' && value !== 'null' && value !== 'NaN' ? value : 'Not available';
 }
 
 function InfoRow({ label, value }: { label: string; value: string }) {
