@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "lifepilot",
+    "name": "LifePilot",
     "slug": "lifepilot",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -34,7 +34,10 @@
         }
       ],
       "expo-sqlite",
-      ["expo-notifications", { "defaultChannel": "vehicle-reminders", "color": "#5BE49B" }],
+      [
+        "expo-notifications",
+        { "defaultChannel": "vehicle-reminders", "color": "#5BE49B" }
+      ],
       [
         "expo-image-picker",
         {

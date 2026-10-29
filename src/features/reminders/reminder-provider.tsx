@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { router, useRootNavigationState } from 'expo-router';
 import { addDatabaseChangeListener, useSQLiteContext } from 'expo-sqlite';
 import { AppState, Platform } from 'react-native';
-import { loadNotificationRuntime } from '@/features/notifications/runtime';
+import { loadNotificationRuntime, logNotificationDiagnostic } from '@/features/notifications/runtime';
 import { getReminderRevision } from '@/database/reminders';
 import { subscribeVehicleOperations } from '@/features/vehicles/vehicle-operation';
 import { configureReminderChannel, installReminderNotificationHandler, notificationAdapter, notificationPermission,
@@ -37,19 +37,25 @@ export function ReminderProvider({ children }: { children: ReactNode }) {
         if (mounted.current) { setResult(current); setError(current.failures ? 'Some notifications could not be updated. Retry when notifications are available.' : null); }
         if (await getReminderRevision(db) === current.revision) break;
       }
-    } catch { if (mounted.current) setError('Notifications could not be updated. Your records and in-app reminders are still available.'); }
+    } catch (cause) {
+      logNotificationDiagnostic('refresh reminder schedules', cause);
+      if (mounted.current) setError('Notifications could not be updated. Your records and in-app reminders are still available.');
+    }
     finally { if (mounted.current) setBusy(false); }
   }, [db]);
   const requestPermission = useCallback(async () => {
     if (asking.current) return;
     asking.current = true;
     try { await requestReminderPermissionOnce(db, notificationPermission, requestNativeReminderPermission); await refresh(); }
-    catch { if (mounted.current) setError('Notification permission could not be requested. You can continue without notifications.'); }
+    catch (cause) {
+      logNotificationDiagnostic('request reminder permission', cause);
+      if (mounted.current) setError('Notification permission could not be requested. You can continue without notifications.');
+    }
     finally { asking.current = false; }
   }, [db, refresh]);
   useEffect(() => {
     mounted.current = true;
-    void installReminderNotificationHandler();
+    void installReminderNotificationHandler().catch((cause: unknown) => logNotificationDiagnostic('install notification handler', cause));
     let debounce: ReturnType<typeof setTimeout>;
     const schedule = () => {
       clearTimeout(debounce);
@@ -76,7 +82,7 @@ export function ReminderProvider({ children }: { children: ReactNode }) {
         const owner = notification.request.content.data?.owner;
         if (owner === NOTIFICATION_OWNER || owner === TEST_NOTIFICATION_OWNER) schedule();
       });
-    });
+    }).catch((cause: unknown) => logNotificationDiagnostic('subscribe to received notifications', cause));
     return () => {
       mounted.current = false; active = false; clearTimeout(debounce); clearInterval(poll);
       operations(); database.remove(); app.remove(); received?.remove();
@@ -109,7 +115,7 @@ function ReminderNotificationNavigation() {
       const last = Notifications.getLastNotificationResponse();
       if (last) open(last);
       subscription = Notifications.addNotificationResponseReceivedListener(open);
-    });
+    }).catch((cause: unknown) => logNotificationDiagnostic('subscribe to notification responses', cause));
     return () => { active = false; subscription?.remove(); };
   }, [navigation?.key]);
   return null;

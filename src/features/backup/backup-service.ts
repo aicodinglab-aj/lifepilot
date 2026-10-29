@@ -3,13 +3,13 @@ import Constants from 'expo-constants';
 import { CryptoDigestAlgorithm, digest, randomUUID } from 'expo-crypto';
 import { Directory, File, Paths } from 'expo-file-system';
 import type { SQLiteDatabase } from 'expo-sqlite';
-import { BACKUP_DATABASE_PATH, BackupError, assertSafeBackupPath, base64ToBytes, bytesToBase64, createManifest, validatePackageShape, type BackupManifestEntry, type BackupPackage } from './backup-format';
+import { assertSafeBackupPath, BACKUP_DATABASE_PATH, BackupError, base64ToBytes, bytesToBase64, createManifest, validatePackageShape, type BackupManifestEntry, type BackupPackage } from './backup-format';
 
 const OWNED_ROOT = 'vehicle-photos';
 const hex = (buffer: ArrayBuffer) => [...new Uint8Array(buffer)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
 const sha256 = async (bytes: Uint8Array) => hex(await digest(CryptoDigestAlgorithm.SHA256, Uint8Array.from(bytes).buffer));
 
-function discover(directory: Directory, prefix: string, result: { path: string; file: File }[]) {
+function discover(directory: Directory, prefix: string, result: { path: string; file: File; }[]) {
   for (const entry of directory.list()) {
     const path = `${prefix}/${entry.name}`;
     assertSafeBackupPath(path);
@@ -18,8 +18,8 @@ function discover(directory: Directory, prefix: string, result: { path: string; 
   }
 }
 
-export type CreateBackupOptions = { destination?: File; now?: Date };
-export type BackupResult = { file: File; manifest: BackupPackage['manifest']; cleanupIncomplete?: boolean };
+export type CreateBackupOptions = { destination?: File; now?: Date; };
+export type BackupResult = { file: File; manifest: BackupPackage['manifest']; cleanupIncomplete?: boolean; };
 let creatingBackup = false;
 
 // Only internally generated, exact cache children can be recursively cleaned.
@@ -33,13 +33,13 @@ function attemptDirectory(id: string) {
 async function capture(db: SQLiteDatabase) {
   let database: Uint8Array;
   try { database = await db.serializeAsync(); } catch { throw new BackupError('snapshot', 'Could not create a consistent database snapshot.'); }
-  const schema = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
+  const schema = await db.getFirstAsync<{ user_version: number; }>('PRAGMA user_version');
   if (!schema) throw new BackupError('snapshot', 'Could not read the database schema.');
-  const captured: { path: string; kind: BackupManifestEntry['kind']; bytes: Uint8Array }[] = [
+  const captured: { path: string; kind: BackupManifestEntry['kind']; bytes: Uint8Array; }[] = [
     { path: BACKUP_DATABASE_PATH, kind: 'database', bytes: database },
   ];
   try {
-    const files: { path: string; file: File }[] = [];
+    const files: { path: string; file: File; }[] = [];
     // Enumerate the parent: an inaccessible owned root must not look empty.
     if (new Directory(Paths.document).list().some((entry) => entry.name === OWNED_ROOT)) {
       discover(new Directory(Paths.document, OWNED_ROOT), OWNED_ROOT, files);
@@ -76,7 +76,7 @@ async function verifyPackage(pkg: BackupPackage) {
   }
   if (Object.keys(pkg.payloads).some((path) => !seen.has(path))) throw new BackupError('integrity', 'Backup contains unlisted content.');
   if (pkg.manifest.entries.filter((entry) => entry.kind === 'database' && entry.path === BACKUP_DATABASE_PATH).length !== 1 ||
-      pkg.manifest.persistentFileCount !== pkg.manifest.entries.filter((entry) => entry.kind === 'persistent-file').length) {
+    pkg.manifest.persistentFileCount !== pkg.manifest.entries.filter((entry) => entry.kind === 'persistent-file').length) {
     throw new BackupError('integrity', 'Backup manifest counts are invalid.');
   }
 }
@@ -110,8 +110,10 @@ export async function createBackup(db: SQLiteDatabase, options: CreateBackupOpti
       payloads[item.path] = bytesToBase64(item.bytes);
       entries.push({ path: item.path, kind: item.kind, size: item.bytes.length, sha256: await sha256(item.bytes) });
     }
-    const manifest = createManifest({ createdAt, appVersion: Constants.expoConfig?.version ?? 'unknown', appBuildVersion: Constants.nativeBuildVersion ?? null,
-      database: { path: BACKUP_DATABASE_PATH, schemaVersion: snapshot.schemaVersion }, entries });
+    const manifest = createManifest({
+      createdAt, appVersion: Constants.expoConfig?.version ?? 'unknown', appBuildVersion: Constants.nativeBuildVersion ?? null,
+      database: { path: BACKUP_DATABASE_PATH, schemaVersion: snapshot.schemaVersion }, entries
+    });
     const staged = new File(staging, 'backup.lpbackup'); staged.create(); staged.write(JSON.stringify({ manifest, payloads } satisfies BackupPackage));
     await verifyBackup(staged);
     // Reserve without overwrite before copying, so failure cleanup owns only
@@ -121,6 +123,7 @@ export async function createBackup(db: SQLiteDatabase, options: CreateBackupOpti
     result = { file: output, manifest };
     return result;
   } catch (error) {
+    console.error('[LifePilot Backup] Original creation error:', error);
     failure = error instanceof BackupError ? error : error instanceof OperationSuspendedError
       ? new BackupError('busy', error.message) : new BackupError('package', 'LifePilot backup creation failed.');
     if (outputOwned && output) {

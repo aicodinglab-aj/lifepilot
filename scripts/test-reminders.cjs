@@ -59,17 +59,28 @@ function dateTests() {
   assert.equal(domain.planNotifications([{ ...source, dueDate: null, dueOdometer: 1000 }], interval).length, 0);
 }
 async function debugNotificationTests() {
-  const expoGo = load('src/features/notifications/runtime.ts', {
-    'expo-constants': { expoGoConfig: {} }, 'react-native': { Platform: { OS: 'android' } },
-  });
-  assert.equal(expoGo.notificationRuntimeAvailable, false);
-  assert.equal(await expoGo.loadNotificationRuntime(), null, 'Expo Go must not import expo-notifications');
-  const nativeRuntime = load('src/features/notifications/runtime.ts', {
-    'expo-constants': { expoGoConfig: null }, 'react-native': { Platform: { OS: 'android' } },
-    'expo-notifications': { marker: 'native' },
-  });
-  assert.equal(nativeRuntime.notificationRuntimeAvailable, true);
-  assert.equal((await nativeRuntime.loadNotificationRuntime()).marker, 'native');
+  const runtimes = [
+    { name: 'Expo Go', platform: 'android', environment: 'storeClient', ownership: 'expo', expoGoConfig: {}, available: false, reason: 'expo-go' },
+    { name: 'standalone APK', platform: 'android', environment: 'standalone', ownership: null, expoGoConfig: null, available: true, reason: null },
+    { name: 'development client', platform: 'android', environment: 'storeClient', ownership: null, expoGoConfig: null, available: true, reason: null },
+    { name: 'bare native build with Expo Go config marker', platform: 'android', environment: 'bare', ownership: null, expoGoConfig: {}, available: true, reason: null },
+    { name: 'web', platform: 'web', environment: 'bare', ownership: null, expoGoConfig: null, available: false, reason: 'web' },
+  ];
+  for (const runtime of runtimes) {
+    const constantValues = { executionEnvironment: runtime.environment, appOwnership: runtime.ownership, expoGoConfig: runtime.expoGoConfig };
+    const constants = {
+      __esModule: true, default: constantValues,
+      AppOwnership: { Expo: 'expo' }, ExecutionEnvironment: { StoreClient: 'storeClient' },
+    };
+    const loaded = load('src/features/notifications/runtime.ts', {
+      'expo-constants': constants, 'react-native': { Platform: { OS: runtime.platform } },
+      'expo-notifications': { marker: 'native' },
+    }, { console: { info() {}, error() {} } });
+    assert.equal(loaded.notificationRuntimeAvailable, runtime.available, `${runtime.name} availability`);
+    assert.equal(loaded.notificationRuntimeReason, runtime.reason, `${runtime.name} reason`);
+    if (runtime.available) assert.equal((await loaded.loadNotificationRuntime()).marker, 'native', `${runtime.name} loads native module`);
+    else assert.equal(await loaded.loadNotificationRuntime(), null, `${runtime.name} skips native module import`);
+  }
   const profiles = JSON.parse(fs.readFileSync(path.join(__dirname, '../eas.json'), 'utf8')).build;
   for (const [variant, dev, expected] of [
     [profiles.preview.env.EXPO_PUBLIC_APP_VARIANT, false, true],
@@ -89,7 +100,7 @@ async function debugNotificationTests() {
       scheduleNotificationAsync: async (request) => { calls.push(['schedule', request]); if (fail) throw new Error('native scheduling failed'); return request.identifier; },
     };
     const api = load('src/features/reminders/notifications.ts', {
-      '@/features/notifications/runtime': { loadNotificationRuntime: async () => native },
+      '@/features/notifications/runtime': { loadNotificationRuntime: async () => native, logNotificationDiagnostic: () => {} },
       'react-native': { Platform: { OS: 'android' } }, './reminder': domain, './test-build': gate,
     });
     if (!expected) {

@@ -5,6 +5,7 @@ import { StatusBadge, type StatusTone } from '@/components/ui/status';
 import { spacing, typography } from '@/constants/design-system';
 import { useAppearance } from '@/features/appearance/appearance-provider';
 import { useReminderRuntime } from '@/features/reminders/reminder-provider';
+import { notificationRuntimeReason } from '@/features/notifications/runtime';
 
 export function ReminderNotificationStatus() {
   const { colors } = useAppearance();
@@ -13,12 +14,14 @@ export function ReminderNotificationStatus() {
   const tone: StatusTone = permission === 'granted' ? 'success'
     : permission === 'denied' || permission === 'channel-disabled' ? 'warning' : 'neutral';
   const label = permission === 'granted' ? 'Available'
-    : permission === 'unavailable' ? 'Unavailable in Expo Go'
+    : permission === 'unavailable' ? notificationRuntimeReason === 'expo-go' ? 'Unavailable in Expo Go' : 'Unavailable'
       : permission === 'denied' || permission === 'channel-disabled' ? 'Disabled' : 'Optional';
   const message = permission === 'granted' ? 'Notification permission is enabled.'
-    : permission === 'unavailable' ? (Platform.OS === 'web'
+    : permission === 'unavailable' ? (notificationRuntimeReason === 'web'
       ? 'Local notifications are available in the Android and iOS app.'
-      : 'Notifications require a development, preview or production build. In-app reminders remain available in Expo Go.')
+      : notificationRuntimeReason === 'expo-go'
+        ? 'Notifications require a development, preview or production build. In-app reminders remain available in Expo Go.'
+        : 'The notification module is unavailable in this app build. In-app reminders remain available.')
       : permission === 'denied' || permission === 'channel-disabled'
         ? 'Notifications are disabled in device settings. In-app reminders still work.'
         : 'You can continue using in-app reminders without granting notification permission.';
