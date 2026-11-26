@@ -1,4 +1,5 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
+import { DEFAULT_DATE_FORMAT, type DateFormat } from '@/features/dates/date-format';
 import { getCurrentCoverage } from '@/database/vehicle-coverage';
 import { getLatestService } from '@/database/vehicle-services';
 import { dateReminderLabel, odometerStatus } from '@/features/reminders/reminder';
@@ -16,15 +17,15 @@ export async function getOverviewSummary(db: SQLiteDatabase, vehicleId: number, 
   return { insurance, puc, service };
 }
 
-export function coverageQuickStatus(record: CoverageRecord | null, today: string) {
+export function coverageQuickStatus(record: CoverageRecord | null, today: string, dateFormat: DateFormat = DEFAULT_DATE_FORMAT) {
   const value = coverageStatus(record?.expiryDate, record?.startDate, today);
   const detail = !record || value === 'Not added' ? undefined : value === 'Not started'
-    ? `Starts ${coverageDate(record.startDate)} · Until ${coverageDate(record.expiryDate)}`
-    : `${value === 'Expired' ? 'Expired' : 'Until'} ${coverageDate(record.expiryDate)}`;
+    ? `Starts ${coverageDate(record.startDate, dateFormat)} · Until ${coverageDate(record.expiryDate, dateFormat)}`
+    : `${value === 'Expired' ? 'Expired' : 'Until'} ${coverageDate(record.expiryDate, dateFormat)}`;
   return { value, detail };
 }
 
-export function serviceQuickStatus(record: ServiceRecord | null, odometer: number, today: string) {
+export function serviceQuickStatus(record: ServiceRecord | null, odometer: number, today: string, dateFormat: DateFormat = DEFAULT_DATE_FORMAT) {
   if (!record || (!record.nextServiceDate && record.nextServiceOdometer == null)) return { value: 'Not scheduled', detail: undefined };
   // Reuse the existing date/odometer display rules without loading or scheduling reminders.
   const date = record.nextServiceDate ? dateReminderLabel({
@@ -33,7 +34,7 @@ export function serviceQuickStatus(record: ServiceRecord | null, odometer: numbe
   }, today) : null;
   const mileage = odometerStatus(odometer, record.nextServiceOdometer);
   return {
-    value: record.nextServiceDate ? coverageDate(record.nextServiceDate) : nextServiceLabel(record),
+    value: record.nextServiceDate ? coverageDate(record.nextServiceDate, dateFormat) : nextServiceLabel(record, dateFormat),
     detail: [date, mileage?.message].filter(Boolean).join(' · '),
   };
 }

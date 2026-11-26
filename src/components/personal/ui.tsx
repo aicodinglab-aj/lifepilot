@@ -51,7 +51,7 @@ export function PersonalPage({ title, children, loading, error, retry }: {
 }
 
 export function TransactionCard({ transaction }: { transaction: Transaction }) {
-  const { colors: themeColors } = useAppearance();
+  const { colors: themeColors, dateFormat } = useAppearance();
   const income = transaction.type === 'income';
   return <InteractiveCard accessibilityLabel={`Open ${income ? 'income' : 'expense'} transaction, ${formatMoney(transaction.amount)}`}
     onPress={() => router.push({ pathname: '/personal/transaction', params: { id: String(transaction.id) } })}
@@ -66,7 +66,7 @@ export function TransactionCard({ transaction }: { transaction: Transaction }) {
           {income ? '+' : '-'}{formatMoney(transaction.amount)}
         </Text>
       </View>
-      <Text style={[typography.secondaryBody, { color: themeColors.muted }]}>{transaction.categoryName} · {displayDate(transaction.transactionDate)}</Text>
+      <Text style={[typography.secondaryBody, { color: themeColors.muted }]}>{transaction.categoryName} · {displayDate(transaction.transactionDate, dateFormat)}</Text>
       {transaction.paymentMethod && <Text style={[typography.caption, { color: themeColors.muted }]}>{transaction.paymentMethod}</Text>}
     </View>
   </InteractiveCard>;

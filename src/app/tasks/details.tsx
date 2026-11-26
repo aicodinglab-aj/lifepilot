@@ -10,10 +10,11 @@ import { taskId, type Task } from '@/features/tasks/task';
 import { useTaskNotifications } from '@/features/tasks/task-provider';
 import { useCoverageToday } from '@/features/vehicles/use-coverage';
 import { useAppearance } from '@/features/appearance/appearance-provider';
+import { formatDateTime } from '@/features/dates/date-format';
 
 export default function TaskDetails() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const db = useSQLiteContext(), today = useCoverageToday(), notifications = useTaskNotifications(), { colors } = useAppearance();
+  const db = useSQLiteContext(), today = useCoverageToday(), notifications = useTaskNotifications(), { colors, dateFormat } = useAppearance();
   const [task, setTask] = useState<Task | null>(null), [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true), [busy, setBusy] = useState(false), [retry, setRetry] = useState(0);
   const working = useRef(false), generation = useRef(0);
@@ -45,8 +46,8 @@ export default function TaskDetails() {
         <TaskCard><Text accessibilityRole="header" style={[typography.screenTitle, { color: colors.text }]}>{task.title}</Text><TaskMetadata task={task} today={today} />
           <Text style={[typography.body, { color: task.description ? colors.text : colors.muted }]}>{task.description || 'No description'}</Text>
           {!task.reminderEnabled && <Text style={[typography.secondaryBody, { color: colors.muted }]}>Reminder off</Text>}
-          <Text style={[typography.caption, { color: colors.muted }]}>Created {new Date(task.createdAt).toLocaleString()}</Text>
-          {task.completedAt && <Text style={[typography.caption, { color: colors.muted }]}>Completed {new Date(task.completedAt).toLocaleString()}</Text>}
+          <Text style={[typography.caption, { color: colors.muted }]}>Created {formatDateTime(task.createdAt, dateFormat)}</Text>
+          {task.completedAt && <Text style={[typography.caption, { color: colors.muted }]}>Completed {formatDateTime(task.completedAt, dateFormat)}</Text>}
         </TaskCard>
         {notifications.warning && <Text style={[typography.caption, { color: colors.muted }]}>{notifications.warning}</Text>}
         <View style={{ gap: spacing.sm }}>

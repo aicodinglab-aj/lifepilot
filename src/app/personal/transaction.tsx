@@ -14,7 +14,7 @@ import { displayDate } from '@/features/personal/date';
 export { PersonalErrorBoundary as ErrorBoundary } from '@/components/personal/error-boundary';
 
 export default function TransactionDetails() {
-  const { colors } = useAppearance();
+  const { colors, dateFormat } = useAppearance();
   const { id } = useLocalSearchParams<{ id?: string }>(), db = useSQLiteContext();
   const [busy, setBusy] = useState(false), working = useRef(false);
   const state = usePersonalQuery(useCallback(async () => {
@@ -41,7 +41,7 @@ export default function TransactionDetails() {
         <Text adjustsFontSizeToFit numberOfLines={1} style={{ color: colors.text, fontSize: 34, lineHeight: 42, fontWeight: '800' }}>{formatMoney(item.amount)}</Text>
       </View>
       <StandardCard>{[
-        ['Category', item.categoryName], ['Date', displayDate(item.transactionDate)], ['Description', item.description],
+        ['Category', item.categoryName], ['Date', displayDate(item.transactionDate, dateFormat)], ['Description', item.description],
         ['Payment Method', item.paymentMethod], ['Notes', item.notes],
       ].map(([label, value]) => <View key={label} style={{ gap: spacing.xs }}>
         <Text style={[typography.label, { color: colors.muted }]}>{label}</Text>

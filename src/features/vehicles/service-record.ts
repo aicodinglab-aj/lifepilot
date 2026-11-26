@@ -1,3 +1,5 @@
+import { DEFAULT_DATE_FORMAT, formatDate, type DateFormat } from '@/features/dates/date-format';
+
 export type ServiceDraft = {
   serviceDate: string; odometer: number; title: string; workshop: string | null;
   description: string | null; partsCost: number | null; labourCost: number | null;
@@ -65,7 +67,9 @@ export function calculateServiceTotal(costs: Pick<ServiceDraft, 'partsCost' | 'l
 export function serviceMoney(value: number | null) {
   return value == null ? 'Not added' : `₹${value.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 }
-export function nextServiceLabel(record: Pick<ServiceDraft, 'nextServiceDate' | 'nextServiceOdometer'> | null) {
+export function nextServiceLabel(record: Pick<ServiceDraft, 'nextServiceDate' | 'nextServiceOdometer'> | null,
+  dateFormat: DateFormat = DEFAULT_DATE_FORMAT) {
   if (!record) return 'Not added';
-  return [record.nextServiceDate, record.nextServiceOdometer == null ? null : `${record.nextServiceOdometer.toLocaleString()} km`].filter(Boolean).join(' · ') || 'Not added';
+  const date = record.nextServiceDate ? formatDate(record.nextServiceDate, dateFormat) : null;
+  return [date, record.nextServiceOdometer == null ? null : `${record.nextServiceOdometer.toLocaleString()} km`].filter(Boolean).join(' · ') || 'Not added';
 }

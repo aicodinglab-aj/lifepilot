@@ -1,4 +1,4 @@
-import { useThemedStyles } from '@/features/appearance/appearance-provider';
+import { useAppearance, useThemedStyles } from '@/features/appearance/appearance-provider';
 import { useCallback, useRef, useState } from 'react';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
@@ -10,9 +10,11 @@ import { deleteService } from '@/features/vehicles/service-maintenance';
 import { serviceFields, serviceMoney, type ServiceBill, type ServiceRecord } from '@/features/vehicles/service-record';
 import { parseVehicleId } from '@/features/vehicles/vehicle-details';
 import { availableServiceBillUri, validateServiceOwner } from '@/storage/service-bills';
+import { formatDate } from '@/features/dates/date-format';
 
 export default function ServiceDetailsScreen() {
   const themed_styles = useThemedStyles(styles);
+  const { dateFormat } = useAppearance();
   const params = useLocalSearchParams<{ id: string; serviceId: string }>();
   const vehicleId = parseVehicleId(params.id);
   const serviceId = typeof params.serviceId === 'string' ? params.serviceId : '';
@@ -63,7 +65,8 @@ export default function ServiceDetailsScreen() {
       <View style={themed_styles.card}>{serviceFields.map((field) => {
         const value = record[field.key];
         const formatted = field.key.endsWith('Cost') ? serviceMoney(typeof value === 'number' ? value : null)
-          : value == null ? 'Not added' : field.key === 'odometer' || field.key === 'nextServiceOdometer' ? `${Number(value).toLocaleString()} km` : String(value);
+          : value == null ? 'Not added' : field.date ? formatDate(String(value), dateFormat)
+            : field.key === 'odometer' || field.key === 'nextServiceOdometer' ? `${Number(value).toLocaleString()} km` : String(value);
         return <View key={field.key} style={themed_styles.section}><Text style={themed_styles.body}>{field.label}</Text><Text selectable style={themed_styles.accent}>{formatted}</Text></View>;
       })}<Text style={themed_styles.body}>Total Cost</Text><Text style={themed_styles.sectionTitle}>{serviceMoney(record.totalCost)}</Text></View>
       <Text style={themed_styles.sectionTitle}>Bill / Receipt Photos</Text>

@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { Keyboard, KeyboardAvoidingView, Platform, ScrollView, Text, View } from 'react-native';
 import { FormTextField } from '@/components/forms/form-text-field';
+import { DateInput } from '@/components/forms/date-input';
 import { OptionSelector } from '@/components/forms/option-selector';
 import { Button } from '@/components/ui/button';
 import { StandardCard } from '@/components/ui/card';
@@ -63,10 +64,12 @@ export function VehicleDetailsEditor({ vehicle }: { vehicle: Vehicle }) {
             </View>
             : key === 'fuelType' ? <OptionSelector key={key} label={label} options={fuelTypes} value={form.fuelType}
               onChange={(value) => update('fuelType', value)} error={errors.fuelType} />
+            : date ? <DateInput key={key} label={label} optional={optional} value={form[key]} error={errors[key]}
+                editable={!saving} onChangeText={(value) => update(key, value)} />
               : <FormTextField key={key} label={label} optional={optional} value={form[key]} error={errors[key]}
                 editable={!saving} onChangeText={(value) => update(key, value)} multiline={key === 'notes'}
                 keyboardType={numeric ? key === 'modelYear' ? 'number-pad' : 'decimal-pad' : 'default'}
-                maxLength={key === 'modelYear' ? 4 : undefined} placeholder={date ? 'YYYY-MM-DD' : undefined}
+                maxLength={key === 'modelYear' ? 4 : undefined}
                 autoCapitalize={key === 'registrationNumber' || key === 'chassisNumber' || key === 'engineNumber' ? 'characters' : 'sentences'} />)}
         </Section>
       </StandardCard>)}

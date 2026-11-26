@@ -4,6 +4,7 @@ import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext, type SQLiteDatabase } from 'expo-sqlite';
 import { Button, Chip, FieldMessage, FormInput, ToggleRow } from '@/components/ui';
 import { FuelFrame, FuelText } from '@/components/vehicles/fuel-ui';
+import { DateInput } from '@/components/forms/date-input';
 import { spacing } from '@/constants/design-system';
 import { createFuelEntry, updateFuelEntry, getFuelEntry } from '@/database/vehicle-fuel';
 import { fuelFormInput, fuelTitle, initialFuelForm, previewPaidPrice, validateFuelForm, type FuelForm } from '@/features/vehicles/fuel-presentation';
@@ -47,9 +48,10 @@ export function FuelEditor({ db, vehicle, entry }: { db: SQLiteDatabase; vehicle
     finally { working.current = false; if (focused.current) setBusy(false); }
   }
   const field = (key: 'date' | 'odometerKm' | 'totalCost' | 'quantity' | 'price' | 'before' | 'after' | 'location' | 'notes', label: string, optional = false, helper?: string) =>
-    <FormInput label={label} value={form[key]} onChangeText={value => change(key, value)} optional={optional} editable={!busy}
+    key === 'date' ? <DateInput label={label} value={form.date} onChangeText={value => change('date', value)} optional={optional} editable={!busy} helper={helper} />
+      : <FormInput label={label} value={form[key]} onChangeText={value => change(key, value)} optional={optional} editable={!busy}
       keyboardType={['odometerKm', 'totalCost', 'quantity', 'price'].includes(key) ? 'decimal-pad' : ['before', 'after'].includes(key) ? 'number-pad' : 'default'}
-      placeholder={key === 'date' ? 'YYYY-MM-DD' : undefined} multiline={key === 'notes'} helper={helper} />;
+      multiline={key === 'notes'} helper={helper} />;
   return <>
     <FuelText title>{vehicle.registrationNumber}</FuelText>
     {mixed && <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>

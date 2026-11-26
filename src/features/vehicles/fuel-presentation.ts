@@ -1,4 +1,5 @@
 import { localToday } from '@/features/personal/date';
+import { DEFAULT_DATE_FORMAT, formatDate, type DateFormat } from '@/features/dates/date-format';
 import { formatMoney, moneyInput } from '@/features/personal/money';
 import { formatFuelRatio, actualFuelUnitPrice, type ExactRatio } from './fuel-calculations';
 import { fuelQuantity, fuelUnit, validateFuelInput, validateFuelForVehicle, type FuelEntry, type FuelInput, type RefuelFuel, type ChargingLocation } from './fuel-entry';
@@ -42,9 +43,9 @@ export function previewPaidPrice(form: FuelForm) {
     return rupeeRatio({ numerator: (BigInt(draft.costPaise) * BigInt(1000)).toString(), denominator: String(fuelQuantity(draft)) });
   } catch { return null; }
 }
-export function fuelDetailRows(entry: FuelEntry): [string, string][] {
+export function fuelDetailRows(entry: FuelEntry, dateFormat: DateFormat = DEFAULT_DATE_FORMAT): [string, string][] {
   const unit = fuelUnit(entry);
-  const rows: [string, string][] = [['Date', entry.date], ['Odometer', `${milliText(entry.odometerMetres)} km`],
+  const rows: [string, string][] = [['Date', formatDate(entry.date, dateFormat)], ['Odometer', `${milliText(entry.odometerMetres)} km`],
     [entry.kind === 'charge' ? 'Energy added' : 'Quantity', `${milliText(fuelQuantity(entry))} ${unit}`],
     ['Total paid', formatMoney(entry.costPaise)], [`Actual price/${unit}`, rupeeRatio(actualFuelUnitPrice(entry))]];
   if (entry.kind === 'refuel') {

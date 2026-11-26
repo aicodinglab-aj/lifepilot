@@ -1,4 +1,4 @@
-import { useThemedStyles } from '@/features/appearance/appearance-provider';
+import { useAppearance, useThemedStyles } from '@/features/appearance/appearance-provider';
 import { useCallback, useRef, useState } from 'react';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
@@ -16,6 +16,7 @@ import { availableCoverageDocumentUri } from '@/storage/coverage-documents';
 
 export default function CoverageDetailsScreen() {
   const themed_styles = useThemedStyles(styles);
+  const { dateFormat } = useAppearance();
   const { kind: routeKind, id, recordId } = useLocalSearchParams<{ kind: string; id: string; recordId: string }>();
   const vehicleId = parseVehicleId(id);
   const db = useSQLiteContext(), today = useCoverageToday();
@@ -67,7 +68,7 @@ export default function CoverageDetailsScreen() {
     <View style={themed_styles.card}>{coverageFields(kind).map((field) => {
       const value = record[field.key];
       return <View key={field.key} style={themed_styles.section}><Text style={themed_styles.body}>{field.label}</Text>
-        <Text selectable style={themed_styles.accent}>{field.numeric ? serviceMoney(record.amount) : field.date ? coverageDate(typeof value === 'string' ? value : null) : value == null ? 'Not added' : String(value)}</Text></View>;
+        <Text selectable style={themed_styles.accent}>{field.numeric ? serviceMoney(record.amount) : field.date ? coverageDate(typeof value === 'string' ? value : null, dateFormat) : value == null ? 'Not added' : String(value)}</Text></View>;
     })}</View>
     <CoverageAction label={`Edit ${title}`} disabled={busy} onPress={() => router.push({ pathname: '/vehicle/coverage-edit', params: { id: String(vehicleId), kind, recordId } })} />
     <Text style={themed_styles.sectionTitle}>Attached Documents</Text>

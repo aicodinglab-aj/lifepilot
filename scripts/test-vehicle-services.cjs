@@ -102,7 +102,8 @@ async function main() {
     }
   }
   const storage = load('src/storage/service-bills.ts', { 'expo-file-system': { Directory, File, Paths: { document } } });
-  const domain = load('src/features/vehicles/service-record.ts');
+  const dateFormat = load('src/features/dates/date-format.ts');
+  const domain = load('src/features/vehicles/service-record.ts', { '@/features/dates/date-format': dateFormat });
   const operation = load('src/features/vehicles/vehicle-operation.ts');
   const service = load('src/features/vehicles/service-maintenance.ts', {
     'expo-crypto': { randomUUID }, '@/database/vehicle-services': repo, '@/storage/service-bills': storage,

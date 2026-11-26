@@ -4,6 +4,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { Alert, Pressable, Text, View } from 'react-native';
 import { FormTextField } from '@/components/forms/form-text-field';
+import { DateInput } from '@/components/forms/date-input';
 import { VehiclePage } from '@/components/vehicles/vehicle-page';
 import { BillImage, BillViewer, ServiceAction, serviceStyles as styles } from '@/components/vehicles/service-ui';
 import { pickVehiclePhotos, type SelectedVehiclePhoto } from '@/features/vehicles/photo-service';
@@ -53,10 +54,12 @@ export default function AddServiceScreen() {
       <Text style={themed_styles.eyebrow}>{state.vehicle.registrationNumber}</Text>
       <Text style={themed_styles.title}>Add Service</Text>
       {serviceFields.map((field) => <View key={field.key} style={themed_styles.section}>
-        <FormTextField label={`${field.label}${field.required ? ' *' : ''}`} optional={!field.required}
+        {field.date ? <DateInput label={`${field.label}${field.required ? ' *' : ''}`} optional={!field.required}
           value={form[field.key]} onChangeText={(value) => setForm((current) => ({ ...current, [field.key]: value }))}
-          placeholder={field.date ? 'YYYY-MM-DD' : undefined} keyboardType={field.numeric ? 'decimal-pad' : 'default'}
-          multiline={field.multiline} editable={!busy} error={errors[field.key]} />
+          editable={!busy} error={errors[field.key]} />
+          : <FormTextField label={`${field.label}${field.required ? ' *' : ''}`} optional={!field.required}
+            value={form[field.key]} onChangeText={(value) => setForm((current) => ({ ...current, [field.key]: value }))}
+            keyboardType={field.numeric ? 'decimal-pad' : 'default'} multiline={field.multiline} editable={!busy} error={errors[field.key]} />}
         {field.key === 'otherCost' && <View style={themed_styles.card}><Text style={themed_styles.body}>Total Cost</Text>
           <Text style={themed_styles.sectionTitle}>{invalidCost ? 'Check cost fields' : serviceMoney(total)}</Text>
           <Text style={themed_styles.body}>Parts + labour + other. Blank cost fields are not added.</Text></View>}

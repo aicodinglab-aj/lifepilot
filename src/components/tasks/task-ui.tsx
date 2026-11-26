@@ -38,7 +38,7 @@ export function TaskCard({ children }: { children: ReactNode }) {
 }
 
 export function TaskMetadata({ task, today }: { task: Task; today: string }) {
-  const { colors } = useAppearance();
+  const { colors, dateFormat } = useAppearance();
   const status = taskStatus(task, today);
   const fireAt = taskFireAt(task);
   const statusTone: StatusTone = task.completed ? 'success' : status === 'Overdue' ? 'danger' : 'neutral';
@@ -49,7 +49,7 @@ export function TaskMetadata({ task, today }: { task: Task; today: string }) {
       <StatusBadge label={`${task.priority.charAt(0).toUpperCase() + task.priority.slice(1)} priority`} tone={priorityTone} />
       {task.categoryName && <StatusBadge label={task.categoryName} />}
     </View>
-    <Text style={[typography.secondaryBody, { color: status === 'Overdue' ? colors.danger : colors.muted }]}>{taskDue(task)}</Text>
+    <Text style={[typography.secondaryBody, { color: status === 'Overdue' ? colors.danger : colors.muted }]}>{taskDue(task, dateFormat)}</Text>
     {!!task.reminderEnabled && <TaskText>Reminder enabled{task.completed ? ' · inactive while completed' : ''}</TaskText>}
     {!!task.reminderEnabled && !task.completed && <TaskText>{fireAt == null ? 'Reminder not scheduled: this local time is unavailable.'
       : status === 'Overdue' ? 'Reminder time has passed.' : 'Delivery depends on notification permission and device settings. Past times are not scheduled.'}</TaskText>}

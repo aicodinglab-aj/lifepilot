@@ -73,7 +73,8 @@ async function main() {
   assert.equal(failedMigration.raw.prepare("SELECT count(*) AS n FROM sqlite_master WHERE name = 'migration_partial'").get().n, 0);
   failedMigration.raw.close();
 
-  const status = load('src/features/vehicles/coverage-status.ts');
+  const dateFormat = load('src/features/dates/date-format.ts');
+  const status = load('src/features/vehicles/coverage-status.ts', { '@/features/dates/date-format': dateFormat });
   const domain = load('src/features/vehicles/coverage-record.ts', { './coverage-status': status });
   let failClose = false;
   const sqlite = { openDatabaseAsync: async (name, options, directory) => {
@@ -129,7 +130,8 @@ async function main() {
     ['2026-01-01', '2026-01-02', '2026-01-01', 'Not added'], ['2027-01-01', 'bad', '2026-01-01', 'Not added'],
   ]) assert.equal(status.coverageStatus(expiry, start, today), expected);
   assert.equal(status.localToday(new Date(2026, 0, 2, 0, 1)), '2026-01-02');
-  assert.equal(status.coverageDate('2027-02-15'), '15 Feb 2027');
+  assert.equal(status.coverageDate('2027-02-15'), '15-02-2027');
+  assert.equal(status.coverageDate('2027-02-15', 'MM-DD-YYYY'), '02-15-2027');
   assert.equal(status.coverageDate(null), 'Not added');
   for (const kind of ['insurance', 'puc']) {
     const form = kind === 'insurance' ? insurance : puc;

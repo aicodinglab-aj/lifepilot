@@ -37,7 +37,8 @@ function database(filename) {
   };
   return { raw, db };
 }
-const date = load('src/features/personal/date.ts');
+const dateFormat = load('src/features/dates/date-format.ts');
+const date = load('src/features/personal/date.ts', { '@/features/dates/date-format': dateFormat });
 const money = load('src/features/personal/money.ts');
 const domain = load('src/features/personal/transaction.ts', { './money': money, './date': date });
 const repo = load('src/database/personal.ts', { '@/features/personal/transaction': domain, '@/features/personal/date': date, '@/features/personal/money': money });
@@ -50,7 +51,8 @@ function dates() {
   assert.equal(date.monthRange('2024-02').end, '2024-02-29');
   assert.equal(date.monthRange('2026-02').end, '2026-02-28');
   assert.equal(date.monthRange('2026-12').end, '2026-12-31');
-  assert.equal(date.displayDate('2026-09-01'), '1 Sep 2026');
+  assert.equal(date.displayDate('2026-09-01'), '01-09-2026');
+  assert.equal(date.displayDate('2026-09-01', 'MM-DD-YYYY'), '09-01-2026');
   for (const invalid of ['2026-02-29', '2026-04-31', '0000-01-01', '2026-13-01', '2026-01-00', '2026-9-01']) assert.equal(date.validDate(invalid), false);
   assert.throws(() => date.monthRange('2026-13'));
 }

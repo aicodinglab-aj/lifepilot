@@ -18,15 +18,15 @@ import { vehicleModules } from '@/features/vehicles/vehicle-modules';
 type SymbolName = SymbolViewProps['name'];
 
 export default function VehicleOverviewScreen() {
-  const { colors } = useAppearance();
+  const { colors, dateFormat } = useAppearance();
   const state = useVehicle();
   const { vehicleId } = state;
   const vehicle = state.vehicle?.id === vehicleId ? state.vehicle : null;
   const summary = useOverviewSummary(vehicleId);
   const pending = { value: summary.error ?? 'Loading…', detail: undefined };
   const status = (kind: 'insurance' | 'puc') => summary.data
-    ? coverageQuickStatus(summary.data[kind], summary.today) : pending;
-  const service = summary.data && vehicle ? serviceQuickStatus(summary.data.service, vehicle.odometerKm, summary.today) : pending;
+    ? coverageQuickStatus(summary.data[kind], summary.today, dateFormat) : pending;
+  const service = summary.data && vehicle ? serviceQuickStatus(summary.data.service, vehicle.odometerKm, summary.today, dateFormat) : pending;
   const params = { id: String(vehicleId) };
   const coverageHref = (kind: 'insurance' | 'puc'): Href => {
     const record = summary.data?.[kind];

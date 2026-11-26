@@ -1,7 +1,9 @@
 import { customBase, customAccent, DEFAULT_CUSTOM, themePreference, type CustomTheme, type ThemePreference } from './theme';
+import { DEFAULT_DATE_FORMAT, isDateFormat, type DateFormat } from '@/features/dates/date-format';
 
 export const THEME_KEY = 'appearance.theme';
 export const CUSTOM_THEME_KEY = 'appearance.custom';
+export const DATE_FORMAT_KEY = 'regional.dateFormat';
 export type PreferenceStorage = { getItemAsync(key: string): Promise<string | null>; setItemAsync(key: string, value: string): Promise<void> };
 export async function readTheme(storage: PreferenceStorage): Promise<ThemePreference> {
   return themePreference(await storage.getItemAsync(THEME_KEY));
@@ -9,6 +11,14 @@ export async function readTheme(storage: PreferenceStorage): Promise<ThemePrefer
 export async function writeTheme(storage: PreferenceStorage, value: ThemePreference): Promise<void> {
   if (themePreference(value) !== value) throw new Error('Invalid theme preference.');
   await storage.setItemAsync(THEME_KEY, value);
+}
+export async function readDateFormat(storage: PreferenceStorage): Promise<DateFormat> {
+  const stored = await storage.getItemAsync(DATE_FORMAT_KEY);
+  return isDateFormat(stored) ? stored : DEFAULT_DATE_FORMAT;
+}
+export async function writeDateFormat(storage: PreferenceStorage, value: DateFormat): Promise<void> {
+  if (!isDateFormat(value)) throw new Error('Invalid date format preference.');
+  await storage.setItemAsync(DATE_FORMAT_KEY, value);
 }
 export async function readCustomTheme(storage: PreferenceStorage): Promise<CustomTheme> {
   const stored = await storage.getItemAsync(CUSTOM_THEME_KEY);

@@ -1,3 +1,5 @@
+import { DEFAULT_DATE_FORMAT, formatDate, type DateFormat } from '@/features/dates/date-format';
+
 export const EXPIRING_SOON_DAYS = 30;
 export function calendarDay(value: string | null | undefined): number | null {
   if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value) || value.startsWith('0000')) return null;
@@ -16,8 +18,6 @@ export function coverageStatus(expiry: string | null | undefined, start: string 
   if (remaining < 0) return 'Expired';
   return remaining <= EXPIRING_SOON_DAYS ? 'Expiring soon' : 'Valid';
 }
-export function coverageDate(value: string | null) {
-  if (calendarDay(value) == null || !value) return 'Not added';
-  const [year, month, day] = value.split('-').map(Number);
-  return `${day} ${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][month - 1]} ${year}`;
+export function coverageDate(value: string | null | undefined, dateFormat: DateFormat = DEFAULT_DATE_FORMAT) {
+  return calendarDay(value) == null ? 'Not added' : formatDate(value, dateFormat);
 }

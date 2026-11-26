@@ -1,12 +1,14 @@
-import { useThemedStyles } from '@/features/appearance/appearance-provider';
+import { useAppearance, useThemedStyles } from '@/features/appearance/appearance-provider';
 import { router } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 import { VehiclePage, vehiclePageStyles as shared } from '@/components/vehicles/vehicle-page';
 import { lifePilotColors as colors } from '@/constants/lifepilot-theme';
 import { useVehicle } from '@/features/vehicles/use-vehicle';
 import { vehicleDetailSections, vehicleDetailValue } from '@/features/vehicles/vehicle-details';
+import { formatDate } from '@/features/dates/date-format';
 
 export default function VehicleDetailsScreen() {
+  const { dateFormat } = useAppearance();
   const themed_styles = useThemedStyles(styles);
   const themed_shared = useThemedStyles(shared);
   const state = useVehicle();
@@ -18,11 +20,14 @@ export default function VehicleDetailsScreen() {
         <Text style={themed_shared.title}>{vehicle.make} {vehicle.model}</Text></View>
       {vehicleDetailSections.map((section) => <View key={section.title} style={themed_styles.section}>
         <Text style={themed_shared.sectionTitle}>{section.title}</Text>
-        <View style={themed_styles.card}>{section.fields.map(({ key, label }, index) => <View key={key}
-          style={[themed_styles.field, index > 0 && themed_styles.divider]}>
-          <Text style={themed_styles.label}>{label}</Text>
-          <Text selectable style={[themed_styles.value, vehicleDetailValue(vehicle, key) === 'Not added' && themed_styles.missing]}>{vehicleDetailValue(vehicle, key)}</Text>
-        </View>)}</View>
+        <View style={themed_styles.card}>{section.fields.map(({ key, label }, index) => {
+          const value = vehicleDetailValue(vehicle, key);
+          const formatted = key === 'purchaseDate' || key === 'warrantyValidUntil' ? formatDate(value, dateFormat) : value;
+          return <View key={key} style={[themed_styles.field, index > 0 && themed_styles.divider]}>
+            <Text style={themed_styles.label}>{label}</Text>
+            <Text selectable style={[themed_styles.value, formatted === 'Not added' && themed_styles.missing]}>{formatted}</Text>
+          </View>;
+        })}</View>
       </View>)}
     </>}
   </VehiclePage>;

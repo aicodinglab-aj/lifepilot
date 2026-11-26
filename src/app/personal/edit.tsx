@@ -3,6 +3,7 @@ import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { Alert, Keyboard, Text, View } from 'react-native';
 import { PersonalPage } from '@/components/personal/ui';
+import { DateInput } from '@/components/forms/date-input';
 import { Button } from '@/components/ui/button';
 import { StandardCard, StatusCard } from '@/components/ui/card';
 import { Chip } from '@/components/ui/chip';
@@ -96,8 +97,7 @@ export default function TransactionEditor() {
 
       <StandardCard>
         <Section title="Details" subtitle="Add the date and any useful context.">
-          <FormInput label="Date *" value={draft.transactionDate} onChangeText={(value) => field('transactionDate', value)}
-            placeholder="YYYY-MM-DD" maxLength={10} editable={!busy} />
+          <DateInput label="Date *" value={draft.transactionDate} onChangeText={(value) => field('transactionDate', value)} editable={!busy} />
           <FormInput label="Description" optional value={draft.description} onChangeText={(value) => field('description', value)}
             maxLength={200} editable={!busy} />
           <FieldLabel optional>Payment Method</FieldLabel>

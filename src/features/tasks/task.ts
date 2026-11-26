@@ -1,4 +1,5 @@
 import { displayDate, localToday, validDate } from '@/features/personal/date';
+import { DEFAULT_DATE_FORMAT, type DateFormat } from '@/features/dates/date-format';
 
 export { localToday };
 export const priorities = ['low', 'medium', 'high'] as const;
@@ -33,8 +34,8 @@ export function taskStatus(task: Pick<Task, 'completed' | 'dueDate'>, today = lo
   if (!task.dueDate) return 'No due date';
   return task.dueDate < today ? 'Overdue' : task.dueDate === today ? 'Today' : 'Upcoming';
 }
-export function taskDue(task: Pick<Task, 'dueDate' | 'dueTime'>) {
-  return task.dueDate ? `${displayDate(task.dueDate)}${task.dueTime ? ` · ${task.dueTime}` : ''}` : 'No due date';
+export function taskDue(task: Pick<Task, 'dueDate' | 'dueTime'>, dateFormat: DateFormat = DEFAULT_DATE_FORMAT) {
+  return task.dueDate ? `${displayDate(task.dueDate, dateFormat)}${task.dueTime ? ` · ${task.dueTime}` : ''}` : 'No due date';
 }
 export function taskFireAt(task: Pick<Task, 'dueDate' | 'dueTime' | 'reminderEnabled' | 'completed'>): number | null {
   if (!task.reminderEnabled || task.completed || !task.dueDate || !validDate(task.dueDate) || !task.dueTime || !/^([01]\d|2[0-3]):[0-5]\d$/.test(task.dueTime)) return null;

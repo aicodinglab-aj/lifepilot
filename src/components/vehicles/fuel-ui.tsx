@@ -8,6 +8,7 @@ import { useAppearance } from '@/features/appearance/appearance-provider';
 import { fuelQuantity, fuelUnit, type FuelEntry } from '@/features/vehicles/fuel-entry';
 import { milliText } from '@/features/vehicles/fuel-presentation';
 import { formatMoney } from '@/features/personal/money';
+import { formatDate } from '@/features/dates/date-format';
 
 export function FuelText({ children, title = false }: { children: ReactNode; title?: boolean }) {
   const { colors } = useAppearance();
@@ -28,10 +29,11 @@ export function FuelFrame({ title, vehicleId, loading, error, reload, children, 
   </SafeAreaView>;
 }
 export function FuelEntryCard({ entry }: { entry: FuelEntry }) {
-  return <InteractiveCard accessibilityLabel={`View ${entry.kind === 'charge' ? 'charging' : entry.fuelType} entry, ${entry.date}, ${formatMoney(entry.costPaise)}`}
+  const { dateFormat } = useAppearance();
+  return <InteractiveCard accessibilityLabel={`View ${entry.kind === 'charge' ? 'charging' : entry.fuelType} entry, ${formatDate(entry.date, dateFormat)}, ${formatMoney(entry.costPaise)}`}
     onPress={() => router.push({ pathname: '/vehicle/fuel-details', params: { id: String(entry.vehicleId), entryId: String(entry.id) } })}>
     <View style={{ gap: spacing.sm }}>
-      <FuelText title>{entry.date} - {formatMoney(entry.costPaise)}</FuelText>
+      <FuelText title>{formatDate(entry.date, dateFormat)} - {formatMoney(entry.costPaise)}</FuelText>
       <FuelText>{milliText(fuelQuantity(entry))} {fuelUnit(entry)} - {milliText(entry.odometerMetres)} km</FuelText>
       <FuelText>{entry.kind === 'refuel' ? `${entry.fuelType} - ${entry.fullTank ? 'Full tank' : 'Partial fill'}` : 'Charging entry'}</FuelText>
       {entry.location && <FuelText>{entry.location}</FuelText>}

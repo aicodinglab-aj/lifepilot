@@ -19,12 +19,13 @@ function load(relative, dependencies = {}) {
   return exports;
 }
 const legacy = load('src/constants/lifepilot-theme.ts');
+const dateFormat = load('src/features/dates/date-format.ts');
 const theme = load('src/features/appearance/theme.ts', { '@/constants/lifepilot-theme': legacy });
 const rootLayoutSource = fs.readFileSync(path.join(__dirname, '../src/app/_layout.tsx'), 'utf8');
 assert.match(rootLayoutSource, /LifePilot could not start\. Please try again/);
 assert.doesNotMatch(rootLayoutSource, /setDatabaseError\(error\.message\)/);
 function preferences() {
-  return load('src/features/appearance/preference.ts', { './theme': theme });
+  return load('src/features/appearance/preference.ts', { './theme': theme, '@/features/dates/date-format': dateFormat });
 }
 function storage(entries = []) {
   const values = new Map(entries);
@@ -98,6 +99,8 @@ test('Settings About navigation and developer information render safely across a
   const text = (tree) => JSON.stringify(tree);
   const row = nodes(settings.default()).find((node) => node.props?.accessibilityLabel === 'About LifePilot');
   assert.ok(row); row.props.onPress(); assert.equal(actions.pop(), '/about');
+  const dateFormat = nodes(settings.default()).find((node) => node.props?.accessibilityLabel === 'Date Format');
+  assert.ok(dateFormat); dateFormat.props.onPress(); assert.equal(actions.pop(), '/date-format');
   for (const selected of [theme.resolveTheme('lifepilot', null), theme.resolveTheme('light', null),
     theme.resolveTheme('system', 'dark'), theme.resolveTheme('system', 'light'), custom('dark', 'purple'), custom('light', 'purple')]) {
     resolved = selected;
@@ -310,6 +313,7 @@ function providerHarness(store) {
     react, 'react/jsx-runtime': { jsx, jsxs: jsx },
     'react-native': { useColorScheme: () => system, View: 'View', ActivityIndicator: 'ActivityIndicator' },
     'expo-sqlite/kv-store': { SQLiteStorage: function () { return store; } },
+    '@/features/dates/date-format': dateFormat,
     './theme': theme, './preference': preferences(),
   });
   const child = { id: 'existing application tree' };
@@ -371,6 +375,50 @@ test('provider startup restores custom settings and only System reacts to device
   assert.equal(value.resolved.id, 'light');
   await value.setPreference('custom');
   assert.equal(harness.render().props.value.colors.primary, '#7030B5');
+});
+
+test('provider defaults the date format and restores a changed preference after restart', async () => {
+  const store = storage();
+  const first = providerHarness(store);
+  first.render(); await flush();
+  let value = first.render().props.value;
+  assert.equal(value.dateFormat, 'DD-MM-YYYY');
+  await value.setDateFormat('MM-DD-YYYY');
+  assert.equal(first.render().props.value.dateFormat, 'MM-DD-YYYY');
+  const restarted = providerHarness(store);
+  restarted.render(); await flush();
+  value = restarted.render().props.value;
+  assert.equal(value.dateFormat, 'MM-DD-YYYY');
+  await value.setDateFormat('YYYY-MM-DD');
+  assert.equal(restarted.render().props.value.dateFormat, 'YYYY-MM-DD');
+});
+
+test('Date Format screen shows the three examples, selected state, and Settings back route', async () => {
+  const jsx = (type, props) => ({ type, props });
+  const actions = [], resolved = theme.resolveTheme('lifepilot');
+  const screen = load('src/app/date-format.tsx', {
+    'react/jsx-runtime': { jsx, jsxs: jsx },
+    'react-native': { Pressable: 'Pressable', ScrollView: 'ScrollView', Text: 'Text', View: 'View' },
+    'react-native-safe-area-context': { SafeAreaView: 'SafeAreaView' },
+    '@/components/ui/screen-header': { ScreenHeader: (props) => jsx('ScreenHeader', props) },
+    '@/components/ui/section': { Section: (props) => jsx('Section', props) },
+    '@/constants/design-system': { layout: { screenContent: {} }, radii: { lg: 18 }, spacing: { md: 12, base: 16, xs: 4 },
+      typography: { sectionHeading: {}, secondaryBody: {}, cardTitle: {}, caption: {} } },
+    '@/features/appearance/appearance-provider': { useAppearance: () => ({ colors: resolved.colors, dateFormat: 'DD-MM-YYYY',
+      saving: false, error: null, setDateFormat: async (value) => actions.push(value) }) },
+    '@/features/dates/date-format': dateFormat,
+  });
+  const tree = screen.default();
+  const nodes = (node) => !node || typeof node !== 'object' ? [] : [node, ...[node.props?.children].flat(Infinity).flatMap(nodes)];
+  const radios = nodes(tree).filter((node) => node.props?.accessibilityRole === 'radio');
+  assert.equal(radios.length, 3);
+  assert.equal(radios[0].props.accessibilityState.checked, true);
+  assert.deepEqual(radios.map((node) => node.props.accessibilityLabel), [
+    'DD-MM-YYYY, example 26-11-2026', 'MM-DD-YYYY, example 11-26-2026', 'YYYY-MM-DD, example 2026-11-26',
+  ]);
+  await radios[1].props.onPress(); assert.deepEqual(actions, ['MM-DD-YYYY']);
+  const header = nodes(tree).find((node) => node.props?.title === 'Date Format');
+  assert.equal(header.props.title, 'Date Format'); assert.equal(header.props.fallbackHref, '/settings');
 });
 
 test('root theme updates retain SQLite setup identities and update navigation colors', () => {

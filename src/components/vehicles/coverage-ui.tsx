@@ -1,4 +1,4 @@
-import { useThemedStyles, useThemeColor } from '@/features/appearance/appearance-provider';
+import { useAppearance, useThemedStyles, useThemeColor } from '@/features/appearance/appearance-provider';
 import { useState } from 'react';
 import { Image } from 'expo-image';
 import { Modal, Text, View } from 'react-native';
@@ -14,11 +14,12 @@ const statusColors: Record<CoverageStatus, string> = {
 export function CoverageStatusBadge({ record, today }: { record: CoverageRecord | null; today: string }) {
   const themedColor = useThemeColor();
   const themed_styles = useThemedStyles(styles);
+  const { dateFormat } = useAppearance();
   const status = coverageStatus(record?.expiryDate, record?.startDate, today);
   return <View style={{ gap: 8 }}>
     <Text style={[themed_styles.accent, { color: themedColor(statusColors[status]) }]}>{status}</Text>
-    {record && status !== 'Not added' && <Text style={themed_styles.body}>{status === 'Not started' ? `Starts ${coverageDate(record.startDate)} · ` : ''}
-      {status === 'Expired' ? 'Expired on' : 'Valid until'} {coverageDate(record.expiryDate)}</Text>}
+    {record && status !== 'Not added' && <Text style={themed_styles.body}>{status === 'Not started' ? `Starts ${coverageDate(record.startDate, dateFormat)} · ` : ''}
+      {status === 'Expired' ? 'Expired on' : 'Valid until'} {coverageDate(record.expiryDate, dateFormat)}</Text>}
   </View>;
 }
 export function CoverageDocumentImage({ uri, full = false }: { uri: string | null; full?: boolean }) {

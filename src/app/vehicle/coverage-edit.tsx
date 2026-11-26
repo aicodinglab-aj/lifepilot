@@ -4,6 +4,7 @@ import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { Alert, Pressable, Text, View } from 'react-native';
 import { FormTextField } from '@/components/forms/form-text-field';
+import { DateInput } from '@/components/forms/date-input';
 import { OptionSelector } from '@/components/forms/option-selector';
 import { VehiclePage } from '@/components/vehicles/vehicle-page';
 import { CoverageAction, CoverageDocumentImage, CoverageDocumentViewer, coverageStyles as styles } from '@/components/vehicles/coverage-ui';
@@ -94,10 +95,13 @@ function CoverageEditor({ routeKind, recordId }: { routeKind: string; recordId?:
         <OptionSelector label="Common policy types" options={policyTypes} value={form.policyType}
           onChange={(value) => { if (!busy) setForm((current) => ({ ...current, policyType: value })); }} />
       </View>}
-      <FormTextField label={`${field.label}${field.required ? ' *' : ''}`} optional={!field.required}
+      {field.date ? <DateInput label={`${field.label}${field.required ? ' *' : ''}`} optional={!field.required}
         value={form[field.key]} onChangeText={(value) => setForm((current) => ({ ...current, [field.key]: value }))}
-        placeholder={field.date ? 'YYYY-MM-DD' : field.key === 'policyType' ? 'Choose above or enter another type' : undefined}
-        keyboardType={field.numeric ? 'decimal-pad' : 'default'} multiline={field.multiline} editable={!busy} error={errors[field.key]} />
+        editable={!busy} error={errors[field.key]} />
+        : <FormTextField label={`${field.label}${field.required ? ' *' : ''}`} optional={!field.required}
+          value={form[field.key]} onChangeText={(value) => setForm((current) => ({ ...current, [field.key]: value }))}
+          placeholder={field.key === 'policyType' ? 'Choose above or enter another type' : undefined}
+          keyboardType={field.numeric ? 'decimal-pad' : 'default'} multiline={field.multiline} editable={!busy} error={errors[field.key]} />}
     </View>)}
     <Text style={themed_styles.sectionTitle}>{kind === 'insurance' ? 'Policy Document Photos' : 'PUC Certificate Photos'}</Text>
     <Text style={themed_styles.body}>Attach photos of your documents. Attachment changes apply when you save.</Text>

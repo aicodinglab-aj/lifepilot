@@ -2,26 +2,30 @@ import { createContext, useContext, useEffect, useRef, useState, type ReactNode 
 import { ActivityIndicator, useColorScheme, View } from 'react-native';
 import { SQLiteStorage } from 'expo-sqlite/kv-store';
 import { DEFAULT_CUSTOM, resolveTheme, themeColor, themedStyles, type CustomTheme, type ThemePreference } from './theme';
-import { readCustomTheme, readTheme, writeCustomTheme, writeTheme } from './preference';
+import { DEFAULT_DATE_FORMAT, type DateFormat } from '@/features/dates/date-format';
+import { readCustomTheme, readDateFormat, readTheme, writeCustomTheme, writeDateFormat, writeTheme } from './preference';
 
 const storage = new SQLiteStorage('lifepilot-preferences.db');
 const defaultTheme = resolveTheme('lifepilot', null);
 const AppearanceContext = createContext({
   preference: 'lifepilot' as ThemePreference, resolved: defaultTheme, custom: DEFAULT_CUSTOM,
+  dateFormat: DEFAULT_DATE_FORMAT as DateFormat,
   colors: defaultTheme.colors, isDark: true, saving: false, error: null as string | null,
   setPreference: async (_value: ThemePreference): Promise<void> => {},
   setCustom: async (_value: CustomTheme): Promise<void> => {},
+  setDateFormat: async (_value: DateFormat): Promise<void> => {},
 });
 export function AppearanceProvider({ children }: { children: ReactNode }) {
   const system = useColorScheme();
   const [preference, setPreference] = useState<ThemePreference>('lifepilot');
   const [custom, setCustom] = useState<CustomTheme>(DEFAULT_CUSTOM);
+  const [dateFormat, updateDateFormat] = useState<DateFormat>(DEFAULT_DATE_FORMAT);
   const [ready, setReady] = useState(false), [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null), working = useRef(false);
   useEffect(() => {
     let active = true;
-    void Promise.all([readTheme(storage), readCustomTheme(storage)]).then(([value, customization]) => {
-      if (active) { setPreference(value); setCustom(customization); }
+    void Promise.all([readTheme(storage), readCustomTheme(storage), readDateFormat(storage)]).then(([value, customization, format]) => {
+      if (active) { setPreference(value); setCustom(customization); updateDateFormat(format); }
     })
       .catch(() => { if (active) setError('Could not read appearance settings. Using LifePilot.'); })
       .finally(() => { if (active) setReady(true); });
@@ -41,9 +45,18 @@ export function AppearanceProvider({ children }: { children: ReactNode }) {
     catch { setCustom(custom); setError('Could not save customization. Your previous customization was restored.'); }
     finally { working.current = false; setSaving(false); }
   }
+  async function selectDateFormat(value: DateFormat) {
+    if (working.current) return;
+    const previous = dateFormat;
+    working.current = true; setSaving(true); updateDateFormat(value); setError(null);
+    try { await writeDateFormat(storage, value); }
+    catch { updateDateFormat(previous); setError('Could not save the date format. Your previous preference was restored.'); }
+    finally { working.current = false; setSaving(false); }
+  }
   const resolved = resolveTheme(preference, system, custom);
   if (!ready) return <View style={{ flex: 1, backgroundColor: defaultTheme.colors.background, justifyContent: 'center' }}><ActivityIndicator color={defaultTheme.colors.primary} /></View>;
-  return <AppearanceContext.Provider value={{ preference, custom, resolved, colors: resolved.colors, isDark: resolved.isDark, saving, error, setPreference: select, setCustom: customize }}>
+  return <AppearanceContext.Provider value={{ preference, custom, dateFormat, resolved, colors: resolved.colors, isDark: resolved.isDark,
+    saving, error, setPreference: select, setCustom: customize, setDateFormat: selectDateFormat }}>
     {children}
   </AppearanceContext.Provider>;
 }

@@ -1,12 +1,12 @@
 import { useThemedStyles } from '@/features/appearance/appearance-provider';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Image, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import { lifePilotColors as colors } from '@/constants/lifepilot-theme';
 import { availablePhotoUri } from '@/storage/vehicle-photos';
 
-export function VehiclePhotoImage({ vehicleId, photoId, uri, style, contain = false }: {
+export function VehiclePhotoImage({ vehicleId, photoId, uri, style, contain = false, fallback }: {
   vehicleId: number; photoId: string | null; uri: string | null;
-  style?: StyleProp<ViewStyle>; contain?: boolean;
+  style?: StyleProp<ViewStyle>; contain?: boolean; fallback?: ReactNode;
 }) {
   const themed_styles = useThemedStyles(styles);
   const [failedUri, setFailedUri] = useState<string | null>(null);
@@ -20,7 +20,7 @@ export function VehiclePhotoImage({ vehicleId, photoId, uri, style, contain = fa
             });
             setFailedUri(resolved);
           }} />
-      : <Text style={themed_styles.placeholder}>{uri ? 'Photo unavailable' : 'No vehicle photo yet'}</Text>}
+      : fallback ?? <Text style={themed_styles.placeholder}>{uri ? 'Photo unavailable' : 'No vehicle photo yet'}</Text>}
   </View>;
 }
 

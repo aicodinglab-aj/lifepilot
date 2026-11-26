@@ -8,6 +8,7 @@ import { VehicleHeader, VehiclePage } from '@/components/vehicles/vehicle-page';
 import { ServiceAction, serviceStyles as styles } from '@/components/vehicles/service-ui';
 import { getServiceHistory, getServiceSummary, SERVICE_PAGE_SIZE } from '@/database/vehicle-services';
 import { nextServiceLabel, serviceMoney, type ServiceRecord } from '@/features/vehicles/service-record';
+import { formatDate } from '@/features/dates/date-format';
 import { retryServiceCleanup } from '@/features/vehicles/service-maintenance';
 import { useVehicle } from '@/features/vehicles/use-vehicle';
 
@@ -71,8 +72,8 @@ export default function ServiceHistoryScreen() {
         <Text style={themed_styles.eyebrow}>{vehicle.registrationNumber}</Text>
         <Text style={themed_styles.title}>Service & Maintenance</Text>
         <View style={themed_styles.card}>
-          <Text style={themed_styles.body}>Latest Service</Text><Text style={themed_styles.accent}>{summary?.latest?.serviceDate ?? 'Not added'}</Text>
-          <Text style={themed_styles.body}>Next Service</Text><Text style={themed_styles.accent}>{nextServiceLabel(summary?.latest ?? null)}</Text>
+          <Text style={themed_styles.body}>Latest Service</Text><Text style={themed_styles.accent}>{formatDate(summary?.latest?.serviceDate, appearance.dateFormat)}</Text>
+          <Text style={themed_styles.body}>Next Service</Text><Text style={themed_styles.accent}>{nextServiceLabel(summary?.latest ?? null, appearance.dateFormat)}</Text>
           <Text style={themed_styles.body}>Total Maintenance Cost</Text><Text style={themed_styles.sectionTitle}>{serviceMoney(summary?.total ?? null)}</Text>
           {!!summary?.missing && <Text style={themed_styles.body}>{summary.missing} service(s) have no costs added.</Text>}
           <Text style={themed_styles.body}>Next service uses the latest service record.</Text>
@@ -85,13 +86,13 @@ export default function ServiceHistoryScreen() {
         <ServiceAction label="Add Service" onPress={add} /></View>}
       ListFooterComponent={paging ? <ActivityIndicator color={appearance.colors.green} /> : pageError ? <View style={themed_styles.section}>
         <Text style={themed_styles.body}>{pageError}</Text><ServiceAction label="Try again" onPress={() => { void loadMore(); }} /></View> : null}
-      renderItem={({ item }) => <Pressable accessibilityRole="button" accessibilityLabel={`View ${item.title}, ${item.serviceDate}`}
+      renderItem={({ item }) => <Pressable accessibilityRole="button" accessibilityLabel={`View ${item.title}, ${formatDate(item.serviceDate, appearance.dateFormat)}`}
         onPress={() => router.push({ pathname: '/vehicle/service-details', params: { id: String(vehicleId), serviceId: item.id } })} style={themed_styles.card}>
-        <Text style={themed_styles.eyebrow}>{item.serviceDate} · {item.odometer.toLocaleString()} km</Text>
+        <Text style={themed_styles.eyebrow}>{formatDate(item.serviceDate, appearance.dateFormat)} · {item.odometer.toLocaleString()} km</Text>
         <Text style={themed_styles.sectionTitle}>{item.title}</Text>
         {item.workshop && <Text style={themed_styles.body}>{item.workshop}</Text>}
         <Text style={themed_styles.accent}>{serviceMoney(item.totalCost)}</Text>
-        {(item.nextServiceDate || item.nextServiceOdometer != null) && <Text style={themed_styles.body}>Next: {nextServiceLabel(item)}</Text>}
+        {(item.nextServiceDate || item.nextServiceOdometer != null) && <Text style={themed_styles.body}>Next: {nextServiceLabel(item, appearance.dateFormat)}</Text>}
       </Pressable>} />
   </SafeAreaView>;
 }

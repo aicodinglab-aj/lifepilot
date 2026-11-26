@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { StandardCard } from '@/components/ui/card';
 import { Chip } from '@/components/ui/chip';
 import { FieldLabel, FormInput, ToggleRow } from '@/components/ui/form-controls';
+import { DateInput } from '@/components/forms/date-input';
 import { Section } from '@/components/ui/section';
 import { spacing, typography } from '@/constants/design-system';
 import { getTask, getTaskCategories, saveTask } from '@/database/tasks';
@@ -75,7 +76,7 @@ export default function TaskEditor() {
           </StandardCard>
           <StandardCard>
             <Section title="Schedule" subtitle="Dates and times use your device's local time.">
-              <FormInput label="Due date" optional placeholder="YYYY-MM-DD" value={form.dueDate ?? ''} editable={!busy}
+              <DateInput label="Due date" optional value={form.dueDate ?? ''} editable={!busy}
                 onChangeText={(dueDate) => update(dueDate.trim() ? { dueDate } : { dueDate: null, dueTime: null, reminderEnabled: 0 })} />
               <FormInput label="Due time" optional placeholder="HH:MM (24-hour)" value={form.dueTime ?? ''} editable={!busy && !!form.dueDate}
                 onChangeText={(dueTime) => update({ dueTime, ...(!dueTime.trim() ? { reminderEnabled: 0 } : {}) })} />

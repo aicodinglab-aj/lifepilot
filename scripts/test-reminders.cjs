@@ -34,7 +34,8 @@ function database(filename) {
   };
   return { raw, db };
 }
-const dates = load('src/features/vehicles/coverage-status.ts');
+const dateFormat = load('src/features/dates/date-format.ts');
+const dates = load('src/features/vehicles/coverage-status.ts', { '@/features/dates/date-format': dateFormat });
 const domain = load('src/features/reminders/reminder.ts', { '@/features/vehicles/coverage-status': dates });
 function dateTests() {
   const day = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;

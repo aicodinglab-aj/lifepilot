@@ -21,7 +21,7 @@ import { useCoverageToday } from '@/features/vehicles/use-coverage';
 type ReminderSection = { title: 'Upcoming' | 'Overdue / Expired' | 'Service mileage'; data: ReminderSource[] };
 
 export default function RemindersScreen() {
-  const { colors } = useAppearance();
+  const { colors, dateFormat } = useAppearance();
   const db = useSQLiteContext(), today = useCoverageToday();
   const runtime = useReminderRuntime();
   const [sources, setSources] = useState<ReminderSource[]>([]);
@@ -87,7 +87,7 @@ export default function RemindersScreen() {
             <StatusBadge label={status} tone={reminderTone(section.title, miles?.state, status)} />
             <Text style={[typography.secondaryBody, { color: colors.muted }]}>{miles
               ? `Current ${item.odometer.toLocaleString()} km · Service at ${item.dueOdometer?.toLocaleString()} km`
-              : coverageDate(item.dueDate)}</Text>
+              : coverageDate(item.dueDate, dateFormat)}</Text>
             {miles && <Text style={[typography.caption, { color: colors.muted }]}>Based on the last entered odometer.</Text>}
           </View>
         </InteractiveCard>;

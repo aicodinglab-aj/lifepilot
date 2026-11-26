@@ -9,8 +9,10 @@ import { fuelDetailRows } from '@/features/vehicles/fuel-presentation';
 import { useVehicle } from '@/features/vehicles/use-vehicle';
 import { useFuelResource } from '@/features/vehicles/use-fuel-resource';
 import { OperationSuspendedError } from '@/features/activity/operation-lifecycle';
+import { useAppearance } from '@/features/appearance/appearance-provider';
 
 export default function FuelDetails() {
+  const { dateFormat } = useAppearance();
   const state = useVehicle(), db = useSQLiteContext(), { entryId } = useLocalSearchParams<{ entryId: string }>();
   const id = Number(entryId), working = useRef(false), focused = useRef(false);
   const [busy, setBusy] = useState(false), [error, setError] = useState<string | null>(null);
@@ -35,7 +37,7 @@ export default function FuelDetails() {
   return <FuelFrame title={entry?.kind === 'charge' ? 'Charging entry' : 'Fuel entry'} vehicleId={state.vehicleId}
     loading={state.loading || resource.loading} error={state.error ? 'This vehicle is unavailable.' : resource.error ?? (!entry ? 'This entry is no longer available for this vehicle.' : null)}
     reload={() => { state.reload(); resource.reload(); }}>
-    {entry && <><StandardCard>{fuelDetailRows(entry).map(([label, value]) => <FuelText key={label}>{label}: {value}</FuelText>)}</StandardCard>
+    {entry && <><StandardCard>{fuelDetailRows(entry, dateFormat).map(([label, value]) => <FuelText key={label}>{label}: {value}</FuelText>)}</StandardCard>
       {error && <FieldMessage error>{error}</FieldMessage>}
       <Button label="Edit entry" disabled={busy} onPress={() => router.push({ pathname: '/vehicle/fuel-edit', params: { id: String(state.vehicleId), entryId: String(entry.id) } })} />
       <Button label="Delete entry" variant="secondary" loading={busy} onPress={confirmDelete} />

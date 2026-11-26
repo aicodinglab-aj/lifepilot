@@ -11,6 +11,7 @@ import { coverageTitle, parseCoverageKind, type CoverageRecord } from '@/feature
 import { serviceMoney } from '@/features/vehicles/service-record';
 import { useCoverageToday } from '@/features/vehicles/use-coverage';
 import { useVehicle } from '@/features/vehicles/use-vehicle';
+import { coverageDate } from '@/features/vehicles/coverage-status';
 
 export default function CoverageHistoryScreen() {
   const themed_styles = useThemedStyles(styles);
@@ -62,7 +63,7 @@ export default function CoverageHistoryScreen() {
         <CoverageAction label={`Add ${title}`} onPress={add} /></View>}
       ListFooterComponent={paging ? <ActivityIndicator color={appearance.colors.green} /> : pageError ? <View style={themed_styles.section}>
         <Text style={themed_styles.body}>{pageError}</Text><CoverageAction label="Try again" onPress={() => { void loadMore(); }} /></View> : null}
-      renderItem={({ item }) => <Pressable accessibilityRole="button" accessibilityLabel={`View ${coverageTitle(kind)} ${item.number ?? item.expiryDate}`}
+      renderItem={({ item }) => <Pressable accessibilityRole="button" accessibilityLabel={`View ${coverageTitle(kind)} ${item.number ?? coverageDate(item.expiryDate, appearance.dateFormat)}`}
         style={themed_styles.card} onPress={() => router.push({ pathname: '/vehicle/coverage-details', params: { ...params, recordId: item.id } })}>
         <Text style={themed_styles.sectionTitle}>{item.provider ?? title}</Text><Text style={themed_styles.body}>{item.number ?? 'Not added'}</Text>
         <CoverageStatusBadge record={item} today={today} /><Text style={themed_styles.accent}>{serviceMoney(item.amount)}</Text>
